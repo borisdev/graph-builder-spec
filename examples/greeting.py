@@ -24,7 +24,7 @@ from workflow_workbench import (
     START,
     EdgeSpec,
     GraphSpec,
-    NodeSpec,
+    StepSpec,
     SpecError,
     StrategySpec,
     VariableSpec,
@@ -40,10 +40,10 @@ raw_name = VariableSpec("raw_name", str)
 clean_name = VariableSpec("clean_name", str)
 greeting = VariableSpec("greeting", str)
 
-normalize = NodeSpec("normalize", inputs=(raw_name,), outputs=(clean_name,))
+normalize = StepSpec("normalize", inputs=(raw_name,), outputs=(clean_name,))
 """Turn what the caller typed into the name to greet. THE ROLE — not one way of doing it."""
 
-compose = NodeSpec("compose", inputs=(clean_name,), outputs=(greeting,))
+compose = StepSpec("compose", inputs=(clean_name,), outputs=(greeting,))
 """Turn a name into the sentence handed back."""
 
 

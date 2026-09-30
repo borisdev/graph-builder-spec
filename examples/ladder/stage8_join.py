@@ -8,7 +8,7 @@ broken until `check_step_arity` existed:
     pick_casual ──┘
 
 ⛔ THE WRONG VERSION IS ALSO SHOWN, because the failure is silent and worth seeing once. Declare
-`collect` as an ordinary NodeSpec with two inputs and the design renders, runs, and returns ONE
+`collect` as an ordinary StepSpec with two inputs and the design renders, runs, and returns ONE
 greeting — the step is invoked once per incoming edge and all but one result is discarded. Every
 other check passes it: both variables are declared on both ends, everything reaches END.
 
@@ -37,7 +37,7 @@ from workflow_workbench import (
     EdgeSpec,
     GraphSpec,
     JoinSpec,
-    NodeSpec,
+    StepSpec,
     SpecError,
     StrategySpec,
     VariableSpec,
@@ -55,9 +55,9 @@ casual_line = VariableSpec("casual_line", str)
 both = VariableSpec("both", list)
 announcement = VariableSpec("announcement", str)
 
-say_formal = NodeSpec("say_formal", inputs=(name_in,), outputs=(formal_line,))
-say_casual = NodeSpec("say_casual", inputs=(name_in,), outputs=(casual_line,))
-announce = NodeSpec("announce", inputs=(both,), outputs=(announcement,))
+say_formal = StepSpec("say_formal", inputs=(name_in,), outputs=(formal_line,))
+say_casual = StepSpec("say_casual", inputs=(name_in,), outputs=(casual_line,))
+announce = StepSpec("announce", inputs=(both,), outputs=(announcement,))
 
 collect = JoinSpec("collect", reduce_list_append, initial_factory=list,
                    inputs=(formal_line, casual_line), outputs=(both,))
@@ -101,7 +101,7 @@ greet = StrategySpec("greet", {say_formal: formal, say_casual: casual, announce:
 
 # ── the same shape declared WRONGLY, kept because the failure is invisible ───────────────────
 
-collect_as_step = NodeSpec("collect", inputs=(formal_line, casual_line), outputs=(both,))
+collect_as_step = StepSpec("collect", inputs=(formal_line, casual_line), outputs=(both,))
 
 
 class BrokenGreetings(Greetings):

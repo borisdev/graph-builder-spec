@@ -90,7 +90,7 @@ def test_the_source_warns_where_an_agent_would_trip() -> None:
     """⛔ `docs/parity.md` is for users. THIS is for whoever edits the code next.
 
     Every refusal looks like an obvious omission at the declaration site — `EdgeSpec` has no
-    `transform=`, `NodeSpec` cannot hold a `BaseNode`, `GraphSpec` has no wiring hook — and each
+    `transform=`, `StepSpec` cannot hold a `BaseNode`, `GraphSpec` has no wiring hook — and each
     one is a decision that took measurement to reach. A warning that lives only in the README is
     a warning nobody reading `spec.py` will see.
     """
@@ -98,8 +98,8 @@ def test_the_source_warns_where_an_agent_would_trip() -> None:
     graph_src = (ROOT / "workflow_workbench" / "graph_spec.py").read_text()
 
     assert "FOR A FUTURE AGENT" in spec_src, "spec.py lost its warnings"
-    assert spec_src.count("FOR A FUTURE AGENT") >= 2, "NodeSpec and EdgeSpec each need one"
-    assert "BaseNode" in spec_src, "NodeSpec must say why a BaseNode is not one"
+    assert spec_src.count("FOR A FUTURE AGENT") >= 2, "StepSpec and EdgeSpec each need one"
+    assert "BaseNode" in spec_src, "StepSpec must say why a BaseNode is not one"
     assert "transform=" in spec_src and "matches=" in spec_src, (
         "EdgeSpec must name the two fields people try to add")
     assert "FOR A FUTURE AGENT" in graph_src, "graph_spec.py lost its warning"
@@ -115,14 +115,35 @@ def test_the_probe_reads_parity_rather_than_keeping_its_own_copy() -> None:
     assert "MATRIX: dict" not in probe, "the probe grew a second table again"
 
 
-def _prose_docs() -> list[tuple[str, str]]:
+#: The two documents whose JOB is to name the old API. Everything else must not.
+#:
+#: ⛔ This is an exception by FILE, which is wider than the by-LINE exception below, so it is
+#: spelled out rather than globbed: `docs/migration-*.md` would silently cover a new file nobody
+#: reviewed. `test_the_retirement_exemptions_all_exist` fails if either path is renamed, so the
+#: exemption cannot outlive the document it was written for.
+_NAMES_THE_OLD_API = ("CHANGELOG.md", "docs/migration-0.2.md")
+
+
+def _prose_docs(*, include_migration: bool = True) -> list[tuple[str, str]]:
     """Every markdown file a reader might copy code out of, as (name, text).
 
     ⚠️ Not just the README. `docs/` holds the ladder, the design notes and the generated parity
     table, and a snippet in any of them is one a reader will paste.
     """
     paths = sorted(ROOT.glob("*.md")) + sorted(ROOT.glob("docs/*.md"))
-    return [(str(p.relative_to(ROOT)), p.read_text()) for p in paths]
+    out = [(str(p.relative_to(ROOT)), p.read_text()) for p in paths]
+    if not include_migration:
+        out = [(n, t) for n, t in out if n not in _NAMES_THE_OLD_API]
+    return out
+
+
+def test_the_retirement_exemptions_all_exist() -> None:
+    """A stale exemption is worse than none: it names a file nobody will notice is gone, and the
+    lint it disables goes quiet on whatever takes that path next."""
+    missing = [n for n in _NAMES_THE_OLD_API if not (ROOT / n).exists()]
+    assert not missing, (
+        f"these files are exempt from the retired-API lint but do not exist: {missing}. "
+        f"Delete the exemption or fix the path.")
 
 
 def test_the_docs_use_the_current_api() -> None:
@@ -142,8 +163,10 @@ def test_the_docs_use_the_current_api() -> None:
         "produces=": "renamed to `delivers`",
         "build_pydantic_structure": "there is no wiring hook",
         "check_built_topology": "gone, with the hook it policed",
+        "NodeSpec(": "renamed in 0.2.0 — the class is StepSpec; NodeSpec is now the union "
+                     "StepSpec | JoinSpec | DecisionSpec. See docs/migration-0.2.md",
     }
-    for name, text in _prose_docs():
+    for name, text in _prose_docs(include_migration=False):
         # ⚠️ Only the lines that TALK ABOUT a retirement are skipped — narrow the exception,
         # never the scope. An earlier version split the file at one sentence and left two thirds
         # of it unchecked, which let a paragraph contradicting the escape-hatch claim through.

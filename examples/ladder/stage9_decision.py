@@ -30,7 +30,7 @@ from workflow_workbench import (
     DecisionSpec,
     EdgeSpec,
     GraphSpec,
-    NodeSpec,
+    StepSpec,
     SpecError,
     StrategySpec,
     VariableSpec,
@@ -57,10 +57,10 @@ verdict = VariableSpec("verdict", object)
 handled = VariableSpec("handled", str)
 report_out = VariableSpec("report_out", str)
 
-intake = NodeSpec("intake", inputs=(complaint,), outputs=(verdict,))
-escalate = NodeSpec("escalate", inputs=(verdict,), outputs=(handled,))
-research = NodeSpec("research", inputs=(verdict,), outputs=(handled,))
-report = NodeSpec("report", inputs=(handled,), outputs=(report_out,))
+intake = StepSpec("intake", inputs=(complaint,), outputs=(verdict,))
+escalate = StepSpec("escalate", inputs=(verdict,), outputs=(handled,))
+research = StepSpec("research", inputs=(verdict,), outputs=(handled,))
+report = StepSpec("report", inputs=(handled,), outputs=(report_out,))
 
 route = DecisionSpec("route", note="urgent, or something to look up?",
                      inputs=(verdict,), outputs=(verdict,))

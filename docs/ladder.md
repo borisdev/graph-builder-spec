@@ -35,8 +35,8 @@ name_in    = VariableSpec("name_in", str)
 salutation = VariableSpec("salutation", str)
 greeting   = VariableSpec("greeting", str)
 
-pick    = NodeSpec("pick",    inputs=(name_in,),    outputs=(salutation,))
-compose = NodeSpec("compose", inputs=(salutation,), outputs=(greeting,))
+pick    = StepSpec("pick",    inputs=(name_in,),    outputs=(salutation,))
+compose = StepSpec("compose", inputs=(salutation,), outputs=(greeting,))
 
 class HelloWorld(GraphSpec):
     name = "hello_world"

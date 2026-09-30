@@ -47,11 +47,11 @@ def test_the_typescript_contract_declares_no_field_python_will_reject(name):
 
 def test_the_real_producer_emits_something_the_schema_accepts():
     """The end-to-end version, over a REAL GraphSpec — this is what actually 422'd."""
-    from workflow_workbench import END, START, EdgeSpec, GraphSpec, NodeSpec, StrategySpec, VariableSpec
+    from workflow_workbench import END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec, VariableSpec
     from workflow_workbench.devserver import spec_payload
 
     v = VariableSpec("v", str)
-    a = NodeSpec("a", inputs=(v,), outputs=(v,))
+    a = StepSpec("a", inputs=(v,), outputs=(v,))
 
     class S(GraphSpec):
         name = "s"

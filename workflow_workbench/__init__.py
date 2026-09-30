@@ -1,6 +1,9 @@
 """workflow_workbench — one Pydantic graph design, many competing strategies.
 
     GraphSpec        the design: nodes + edges, as DATA
+    StepSpec         one role a strategy fills. The class you instantiate.
+    NodeSpec         StepSpec | JoinSpec | DecisionSpec — every box the design declares
+    Bindable         StepSpec | TransformEdgeSpec — everything a strategy must bind
     StrategySpec     one complete set of implementations for it
     SubgraphBinding  a whole child design, used as ONE node's implementation
     spec.render(strategy) -> a real pydantic_graph.Graph
@@ -26,11 +29,13 @@ from workflow_workbench.graph_spec import GraphSpec
 from workflow_workbench.spec import (
     END,
     START,
+    Bindable,
     DecisionSpec,
     EdgeSpec,
     JoinSpec,
     MapEdgeSpec,
     NodeSpec,
+    StepSpec,
     SpecError,
     TransformEdgeSpec,
     StrategySpec,
@@ -39,7 +44,9 @@ from workflow_workbench.spec import (
 )
 
 __all__ = [
-    "GraphSpec", "NodeSpec", "EdgeSpec", "JoinSpec", "DecisionSpec", "MapEdgeSpec", "TransformEdgeSpec", "VariableSpec",
+    "GraphSpec", "StepSpec", "EdgeSpec", "JoinSpec", "DecisionSpec", "MapEdgeSpec",
+    "TransformEdgeSpec", "VariableSpec",
+    "NodeSpec", "Bindable",
     "StrategySpec",
     "SubgraphBinding",
     "SpecError",

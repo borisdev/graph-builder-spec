@@ -27,7 +27,7 @@ from workflow_workbench import (
     START,
     EdgeSpec,
     GraphSpec,
-    NodeSpec,
+    StepSpec,
     StrategySpec,
     VariableSpec,
 )
@@ -50,10 +50,10 @@ name_in = VariableSpec("name_in", str)
 salutation = VariableSpec("salutation", str)
 greeting = VariableSpec("greeting", str)
 
-pick = NodeSpec("pick", inputs=(name_in,), outputs=(salutation,))
+pick = StepSpec("pick", inputs=(name_in,), outputs=(salutation,))
 """Choose how to address the guest. THE ROLE — not one way of doing it."""
 
-compose = NodeSpec("compose", inputs=(salutation,), outputs=(greeting,))
+compose = StepSpec("compose", inputs=(salutation,), outputs=(greeting,))
 """Turn a salutation into the sentence that is handed back."""
 
 

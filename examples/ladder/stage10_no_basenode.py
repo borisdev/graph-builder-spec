@@ -29,7 +29,7 @@ from workflow_workbench import (
     DecisionSpec,
     EdgeSpec,
     GraphSpec,
-    NodeSpec,
+    StepSpec,
     StrategySpec,
     VariableSpec,
 )
@@ -62,12 +62,12 @@ draft = VariableSpec("draft", str)
 checked = VariableSpec("checked", object)
 report = VariableSpec("report", str)
 
-triage = NodeSpec("triage", inputs=(paste,), outputs=(verdict,))
-accept = NodeSpec("accept", inputs=(verdict,), outputs=(paste,))
-propose = NodeSpec("propose", inputs=(paste,), outputs=(draft,))
-review = NodeSpec("review", inputs=(draft,), outputs=(checked,))
-retry_seed = NodeSpec("retry_seed", inputs=(checked,), outputs=(paste,))
-publish = NodeSpec("publish", inputs=(checked,), outputs=(report,))
+triage = StepSpec("triage", inputs=(paste,), outputs=(verdict,))
+accept = StepSpec("accept", inputs=(verdict,), outputs=(paste,))
+propose = StepSpec("propose", inputs=(paste,), outputs=(draft,))
+review = StepSpec("review", inputs=(draft,), outputs=(checked,))
+retry_seed = StepSpec("retry_seed", inputs=(checked,), outputs=(paste,))
+publish = StepSpec("publish", inputs=(checked,), outputs=(report,))
 
 gate = DecisionSpec("gate", note="is this a treatment plan at all?",
                     inputs=(verdict,), outputs=(verdict,))
@@ -113,7 +113,7 @@ async def do_triage(ctx) -> object:
 
 async def do_accept(ctx) -> str:
     """⚠️ THE TAX, and it is the whole tax. `propose` is reached by two paths — the gate and the
-    retry — and a NodeSpec cannot declare "this input arrives as EITHER a verdict or a paste". So
+    retry — and a StepSpec cannot declare "this input arrives as EITHER a verdict or a paste". So
     each path converts to the same variable first. A BaseNode would just pass whatever it liked,
     which is exactly the freedom that makes its topology undeclarable."""
     ctx.state.steps.append("accept")

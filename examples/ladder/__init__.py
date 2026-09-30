@@ -16,6 +16,6 @@ test in `tests/test_ladder.py`. If they ever disagree, the test is the one that 
     stage7_iter           `render()` returns a REAL Graph: their `iter()` works on it unchanged.
 
 ⚠️ The design is declared ONCE, in `stage1_bare`, and every later rung imports it. Declaring it
-per stage would mean several `NodeSpec`s named "compose" with no relationship — which is the
+per stage would mean several `StepSpec`s named "compose" with no relationship — which is the
 duplication `check_names` reports, arriving inside the examples that demonstrate `check_names`.
 """

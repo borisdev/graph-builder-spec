@@ -206,10 +206,10 @@ print("can a GraphSpec DECLARE it? there is no second route — the declaration 
 print("=" * 92 + "\n")
 
 from workflow_workbench import (  # noqa: E402
-    END, START, EdgeSpec, GraphSpec, NodeSpec, StrategySpec, VariableSpec)
+    END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec, VariableSpec)
 
 n = VariableSpec("n", int)
-double = NodeSpec("double", inputs=(n,), outputs=(n,))
+double = StepSpec("double", inputs=(n,), outputs=(n,))
 
 
 class Declarative(GraphSpec):

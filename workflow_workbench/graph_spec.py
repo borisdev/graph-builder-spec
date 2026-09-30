@@ -15,12 +15,14 @@ from pydantic_graph import GraphBuilder
 from workflow_workbench import checks
 from workflow_workbench.diagram import diagram as _diagram, diff_diagram as _diff_diagram
 from workflow_workbench.spec import (
+    Bindable,
     DecisionSpec,
+    NodeSpec,
     EdgeSpec,
     MapEdgeSpec,
     TransformEdgeSpec,
     JoinSpec,
-    NodeSpec,
+    StepSpec,
     SpecError,
     StrategySpec,
     SubgraphBinding,
@@ -63,7 +65,9 @@ class GraphSpec:
     """
 
     name: ClassVar[str] = ""
-    nodes: ClassVar[tuple[NodeSpec, ...]] = ()
+    nodes: ClassVar[tuple[StepSpec, ...]] = ()
+    """Roles a strategy fills. NOT every declared box — `joins` and `decisions` bind nothing,
+    and the union of all three is `NodeSpec`."""
     joins: ClassVar[tuple[JoinSpec, ...]] = ()
     """Nodes that COMBINE arrivals. Separate from `nodes` because a strategy binds `nodes` and
     has nothing to bind here — a join carries its own reducer. Keeping them apart is what lets
@@ -116,18 +120,19 @@ class GraphSpec:
                 f"build child graphs until the stack ran out — a design cannot implement one of "
                 f"its own nodes with itself."]
 
-        # ⚠️ `nodes + joins` where the question is "is this a declared ENDPOINT", `nodes` alone
-        # where it is "is this a ROLE a strategy fills". Conflating the two is how a join ends up
-        # demanding an implementation, or an unreachable join goes unreported.
-        endpoints = (*self.nodes, *self.joins, *self.decisions)
-        findings = list(checks.check_names(endpoints))
-        findings += checks.check_variables(endpoints, self.edges)
+        # ⚠️ `nodes` is STEPS ONLY — the roles a strategy fills. `NodeSpec` is every declared
+        # box. Conflating the two is how a join ends up demanding an implementation, or an
+        # unreachable join goes unreported. Both axes now have a name, so the annotations below
+        # are true rather than merely conventional.
+        declared: tuple[NodeSpec, ...] = (*self.nodes, *self.joins, *self.decisions)
+        findings = list(checks.check_names(declared))
+        findings += checks.check_variables(declared, self.edges)
         findings += checks.check_decisions(self.decisions, self.edges)
         findings += checks.check_step_arity(self.nodes, self.edges,
                                             decisions=self.decisions)
-        findings += checks.check_reachable(endpoints, self.edges)
+        findings += checks.check_reachable(declared, self.edges)
         findings += checks.check_transform_edges(self.edges, strategy)
-        findings += checks.check_fan_out_rejoins(endpoints, self.edges)
+        findings += checks.check_fan_out_rejoins(declared, self.edges)
         if strategy is not None:
             findings += checks.check_bindings(self._bindables(), strategy)
             findings += checks.check_implementations(strategy)
@@ -135,7 +140,7 @@ class GraphSpec:
             findings += checks.check_subgraphs(self, strategy, ancestry=(*ancestry, key))
         return findings
 
-    def _bindables(self) -> tuple[Any, ...]:
+    def _bindables(self) -> tuple[Bindable, ...]:
         """Everything a strategy must bind: nodes, plus transform edges left open.
 
         ⚠️ Not `nodes`. A variation point is defined by the design leaving an implementation OPEN,
@@ -237,7 +242,7 @@ class GraphSpec:
         self._wire(g, built, strategy)
         return g.build()
 
-    def _step_body(self, node: NodeSpec, binding: Any) -> Any:
+    def _step_body(self, node: StepSpec, binding: Any) -> Any:
         """One binding -> one native pydantic-graph step body.
 
         A callable is already one, and passes through untouched.

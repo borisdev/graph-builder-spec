@@ -58,7 +58,7 @@ async def double(ctx) -> int:
 Workflow Workbench:
 
 ```python
-double = NodeSpec("double", inputs=(n,), outputs=(n,))
+double = StepSpec("double", inputs=(n,), outputs=(n,))
 # and a strategy binds the body:
 StrategySpec("s", {double: double_impl})
 ```
@@ -149,11 +149,11 @@ async def split(ctx):
 Workflow Workbench:
 
 ```python
-split = NodeSpec("split", inputs=(text,), outputs=(words,), streams=True)
+split = StepSpec("split", inputs=(text,), outputs=(words,), streams=True)
 MapEdgeSpec(source=split, target=collect, carries=words, delivers=word)   # its output is an AsyncIterable
 ```
 
-> A flag on NodeSpec, not its own type: a stream IS a role a strategy fills.
+> A flag on StepSpec, not its own type: a stream IS a role a strategy fills.
 
 ### `broadcast` — **yes**
 

@@ -19,7 +19,7 @@ implementations. Execution stays Pydantic Graph's, and `render()` returns their 
 
 ## What it owns, and what it does not
 
-This library owns the specification — `GraphSpec`, `NodeSpec`, `EdgeSpec`, `VariableSpec`,
+This library owns the specification — `GraphSpec`, `StepSpec`, `EdgeSpec`, `VariableSpec`,
 `StrategySpec` — plus the checks, the strategy diagrams, and `eval_battle`.
 
 Pydantic Evals owns `Case`, `Dataset`, `Evaluator`, `LLMJudge` and `EvaluationReport`; they are
@@ -46,7 +46,7 @@ strategy that produced it. `diff_diagram()` reads the declaration instead.
 
 ## One node role, a step or a whole subgraph
 
-A `NodeSpec` keeps a role's identity and typed boundary stable. A strategy fills it with one
+A `StepSpec` keeps a role's identity and typed boundary stable. A strategy fills it with one
 callable:
 
 ```python

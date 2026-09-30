@@ -117,8 +117,8 @@ raw_name = VariableSpec("raw_name", str)
 clean_name = VariableSpec("clean_name", str)
 greeting = VariableSpec("greeting", str)
 
-normalize = NodeSpec("normalize", inputs=(raw_name,), outputs=(clean_name,))
-compose = NodeSpec("compose", inputs=(clean_name,), outputs=(greeting,))
+normalize = StepSpec("normalize", inputs=(raw_name,), outputs=(clean_name,))
+compose = StepSpec("compose", inputs=(clean_name,), outputs=(greeting,))
 
 class Greeting(GraphSpec):
     name = "greeting"

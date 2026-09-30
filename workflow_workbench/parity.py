@@ -50,7 +50,7 @@ FEATURES: tuple[Feature, ...] = (
     Feature(
         "step", "yes",
         "@g.step\nasync def double(ctx) -> int:\n    return ctx.inputs * 2",
-        'double = NodeSpec("double", inputs=(n,), outputs=(n,))\n'
+        'double = StepSpec("double", inputs=(n,), outputs=(n,))\n'
         '# and a strategy binds the body:\n'
         'StrategySpec("s", {double: double_impl})',
         "Theirs names the node after the function. Ours names it in the DESIGN, so two "
@@ -98,9 +98,9 @@ FEATURES: tuple[Feature, ...] = (
     Feature(
         "stream", "yes",
         "@g.stream\nasync def split(ctx):\n    for w in ctx.inputs.split():\n        yield w",
-        'split = NodeSpec("split", inputs=(text,), outputs=(words,), streams=True)\n'
+        'split = StepSpec("split", inputs=(text,), outputs=(words,), streams=True)\n'
         "MapEdgeSpec(source=split, target=collect, carries=words, delivers=word)   # its output is an AsyncIterable",
-        "A flag on NodeSpec, not its own type: a stream IS a role a strategy fills.",
+        "A flag on StepSpec, not its own type: a stream IS a role a strategy fills.",
     ),
     Feature(
         "broadcast", "yes",

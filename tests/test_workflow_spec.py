@@ -13,7 +13,7 @@ from workflow_workbench import (
     START,
     EdgeSpec,
     GraphSpec,
-    NodeSpec,
+    StepSpec,
     SpecError,
     StrategySpec,
     VariableSpec,
@@ -27,8 +27,8 @@ from workflow_workbench import (
 text = VariableSpec("text", str)
 other = VariableSpec("other", str)
 
-load = NodeSpec("load", inputs=(text,), outputs=(text,))
-parse = NodeSpec("parse", inputs=(text,), outputs=(text,))
+load = StepSpec("load", inputs=(text,), outputs=(text,))
+parse = StepSpec("parse", inputs=(text,), outputs=(text,))
 
 
 class Linear(GraphSpec):
@@ -59,8 +59,8 @@ arm_b = StrategySpec("arm_b", {load: load_b, parse: parse_up})
 def test_field_identical_nodes_do_not_collide_as_dict_keys():
     """`eq=False`: two copy-pasted declarations must stay distinct, or one silently overwrites
     the other's implementation inside a StrategySpec literal."""
-    n1 = NodeSpec("same", (text,), (text,))
-    n2 = NodeSpec("same", (text,), (text,))
+    n1 = StepSpec("same", (text,), (text,))
+    n2 = StepSpec("same", (text,), (text,))
     assert n1 != n2
     assert len({n1: 1, n2: 2}) == 2
 
@@ -71,7 +71,7 @@ def test_variables_are_value_equal():
 
 def test_list_inputs_refused():
     with pytest.raises(SpecError, match="must be a tuple"):
-        NodeSpec("bad", inputs=[text])
+        StepSpec("bad", inputs=[text])
 
 
 def test_edge_cannot_start_at_end_or_end_at_start():
@@ -89,25 +89,25 @@ def test_self_loop_refused():
 # ── checks ──────────────────────────────────────────────────────────────────────────────────
 
 def test_check_names_catches_two_nodes_one_name():
-    dup = NodeSpec("load", (text,), (text,))
+    dup = StepSpec("load", (text,), (text,))
     assert check_names((load, dup))
     assert not check_names((load, parse))
 
 
 def test_check_reachable_finds_an_orphan():
-    orphan = NodeSpec("orphan")
+    orphan = StepSpec("orphan")
     findings = check_reachable((load, parse, orphan), Linear.edges)
     assert any("orphan" in f and "unreachable" in f for f in findings)
 
 
 def test_check_reachable_terminates_on_a_cycle():
-    a, b = NodeSpec("a", outputs=(text,)), NodeSpec("b", inputs=(text,), outputs=(text,))
+    a, b = StepSpec("a", outputs=(text,)), StepSpec("b", inputs=(text,), outputs=(text,))
     edges = (EdgeSpec(source=START, target=a, carries=text), EdgeSpec(source=a, target=b, carries=text), EdgeSpec(source=b, target=a, carries=text), EdgeSpec(source=b, target=END, carries=text))
     check_reachable((a, b), edges)          # must return, not hang
 
 
 def test_check_reachable_flags_an_undeclared_node():
-    ghost = NodeSpec("ghost")
+    ghost = StepSpec("ghost")
     edges = (*Linear.edges, EdgeSpec(source=parse, target=ghost, carries=text))
     assert any("not in `nodes`" in f for f in check_reachable((load, parse), edges))
 
@@ -119,9 +119,9 @@ def test_check_variables_catches_a_swap_that_set_comparison_cannot():
     An aggregate check passes here; only a per-edge one fails.
     """
     a, b = VariableSpec("a", str), VariableSpec("b", str)
-    split = NodeSpec("split", outputs=(a, b))
-    ca = NodeSpec("consume_a", inputs=(a,))
-    cb = NodeSpec("consume_b", inputs=(b,))
+    split = StepSpec("split", outputs=(a, b))
+    ca = StepSpec("consume_a", inputs=(a,))
+    cb = StepSpec("consume_b", inputs=(b,))
     swapped = (EdgeSpec(source=split, target=ca, carries=b), EdgeSpec(source=split, target=cb, carries=a))       # ⛔ crossed
 
     findings = check_variables((split, ca, cb), swapped)
@@ -140,7 +140,7 @@ def test_check_bindings_catches_missing_and_extra():
     partial = StrategySpec("partial", {load: load_a})
     assert any("does not bind" in f for f in check_bindings(Linear.nodes, partial))
 
-    stranger = NodeSpec("stranger")
+    stranger = StepSpec("stranger")
     extra = StrategySpec("extra", {load: load_a, parse: parse_up, stranger: load_a})
     assert any("does not declare" in f for f in check_bindings(Linear.nodes, extra))
 

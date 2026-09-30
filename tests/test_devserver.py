@@ -6,12 +6,12 @@ import pytest
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from workflow_workbench import END, START, EdgeSpec, GraphSpec, NodeSpec, StrategySpec, VariableSpec
+from workflow_workbench import END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec, VariableSpec
 from workflow_workbench.devserver import build_app, spec_payload
 
 v = VariableSpec("v", str)
-a = NodeSpec("a", inputs=(v,), outputs=(v,))
-b = NodeSpec("b", inputs=(v,), outputs=(v,))
+a = StepSpec("a", inputs=(v,), outputs=(v,))
+b = StepSpec("b", inputs=(v,), outputs=(v,))
 
 
 class S(GraphSpec):

@@ -23,7 +23,7 @@ from workflow_workbench import (
     START,
     EdgeSpec,
     GraphSpec,
-    NodeSpec,
+    StepSpec,
     StrategySpec,
     SubgraphBinding,
     VariableSpec,
@@ -64,7 +64,7 @@ document_value = VariableSpec("document", Document)
 candidate_value = VariableSpec("candidate_facts", Candidates)
 facts_value = VariableSpec("facts", Facts)
 
-extract = NodeSpec("extract", inputs=(document_value,), outputs=(facts_value,))
+extract = StepSpec("extract", inputs=(document_value,), outputs=(facts_value,))
 """The role. `Document -> Facts`, and it does not move for any of the three strategies below."""
 
 
@@ -92,9 +92,9 @@ async def better_extract(ctx) -> Facts:
 
 # ── and one child design ────────────────────────────────────────────────────────────────────
 
-generate_candidates = NodeSpec("generate_candidates",
+generate_candidates = StepSpec("generate_candidates",
                                inputs=(document_value,), outputs=(candidate_value,))
-verify_candidates = NodeSpec("verify_candidates",
+verify_candidates = StepSpec("verify_candidates",
                              inputs=(candidate_value,), outputs=(facts_value,))
 
 

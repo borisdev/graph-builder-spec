@@ -33,7 +33,7 @@ from workflow_workbench import (
     START,
     EdgeSpec,
     GraphSpec,
-    NodeSpec,
+    StepSpec,
     SpecError,
     StrategySpec,
     VariableSpec,
@@ -41,7 +41,7 @@ from workflow_workbench import (
 
 spoken = VariableSpec("spoken", str)
 
-translate = NodeSpec("translate", inputs=(greeting,), outputs=(spoken,))
+translate = StepSpec("translate", inputs=(greeting,), outputs=(spoken,))
 """Render the greeting in the guest's language. New role, same design otherwise."""
 
 

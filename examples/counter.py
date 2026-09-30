@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from workflow_workbench import END, START, EdgeSpec, GraphSpec, NodeSpec, StrategySpec, VariableSpec
+from workflow_workbench import END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec, VariableSpec
 
 
 @dataclass
@@ -24,8 +24,8 @@ count = VariableSpec("count", int)
 # ⚠️ `increment` DOES consume the graph input — `add_one` reads `ctx.inputs`. Declaring it
 # was optional while `EdgeSpec.carries` was; now that every edge names what it carries, the
 # node contract has to be honest about receiving it.
-increment = NodeSpec("increment", inputs=(seed,), outputs=(count,))
-double_it = NodeSpec("double_it", inputs=(count,), outputs=(count,))
+increment = StepSpec("increment", inputs=(seed,), outputs=(count,))
+double_it = StepSpec("double_it", inputs=(count,), outputs=(count,))
 
 
 class Counter(GraphSpec):

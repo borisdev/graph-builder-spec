@@ -1,7 +1,7 @@
 """A reshape on the wire: no node, still declared, still comparable.
 
 ⛔ This is the construct I argued AGAINST and got wrong. My position was that a transform must be
-a NodeSpec "because a strategy binds it, and nodes are what strategies bind" — which is an
+a StepSpec "because a strategy binds it, and nodes are what strategies bind" — which is an
 invariant I wrote, not a law. Put the transform on the edge and it keeps every property that
 mattered (visible, checkable, comparable) and loses the one that did not (a box on the canvas).
 """
@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 import pytest
 
 from workflow_workbench import (
-    END, START, EdgeSpec, GraphSpec, NodeSpec, SpecError, StrategySpec,
+    END, START, EdgeSpec, GraphSpec, StepSpec, SpecError, StrategySpec,
     TransformEdgeSpec, VariableSpec)
 
 
@@ -26,8 +26,8 @@ draft = VariableSpec("draft", Draft)
 edge_list = VariableSpec("edge_list", list)
 report = VariableSpec("report", str)
 
-propose = NodeSpec("propose", inputs=(plan,), outputs=(draft,))
-cite = NodeSpec("cite", inputs=(edge_list,), outputs=(report,))
+propose = StepSpec("propose", inputs=(plan,), outputs=(draft,))
+cite = StepSpec("cite", inputs=(edge_list,), outputs=(report,))
 
 
 def take_edges(ctx) -> list:
@@ -59,7 +59,7 @@ fixed_s = StrategySpec("s", {propose: do_propose, cite: do_cite})
 def test_a_fixed_transform_runs_and_creates_no_node() -> None:
     """⛔ The property the whole design turns on: `nodes` is unchanged.
 
-    A `NodeSpec` doing the same work would add a box to every diagram of this design, and a
+    A `StepSpec` doing the same work would add a box to every diagram of this design, and a
     reader would count it as a stage of the workflow. It is not one — it is an accessor.
     """
     spec = Fixed()

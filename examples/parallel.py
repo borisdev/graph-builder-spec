@@ -29,7 +29,7 @@ from workflow_workbench import (
     GraphSpec,
     MapEdgeSpec,
     JoinSpec,
-    NodeSpec,
+    StepSpec,
     StrategySpec,
     VariableSpec,
 )
@@ -38,7 +38,7 @@ numbers = VariableSpec("numbers", list)
 number = VariableSpec("number", int)
 total = VariableSpec("total", int)
 
-transform = NodeSpec("transform", inputs=(number,), outputs=(number,))
+transform = StepSpec("transform", inputs=(number,), outputs=(number,))
 """The role: one number in, one number out — applied to each item of the collection."""
 
 collect = JoinSpec("collect", reduce_sum, initial=0, inputs=(number,), outputs=(total,))

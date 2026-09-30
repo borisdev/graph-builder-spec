@@ -9,7 +9,7 @@ import pytest
 from pydantic_graph.join import reduce_list_append, reduce_sum
 
 from workflow_workbench import (
-    END, START, EdgeSpec, GraphSpec, JoinSpec, MapEdgeSpec, NodeSpec, SpecError,
+    END, START, EdgeSpec, GraphSpec, JoinSpec, MapEdgeSpec, StepSpec, SpecError,
     StrategySpec, VariableSpec)
 
 
@@ -44,7 +44,7 @@ def test_a_fan_out_names_the_item_so_both_ends_are_checked() -> None:
     total = VariableSpec("total", int)
 
     wrong_item = VariableSpec("wrong_item", int)
-    step = NodeSpec("step", inputs=(number,), outputs=(number,))
+    step = StepSpec("step", inputs=(number,), outputs=(number,))
     collect = JoinSpec("collect", reduce_sum, initial=0, inputs=(number,), outputs=(total,))
 
     class Mismatched(GraphSpec):
@@ -71,7 +71,7 @@ def test_a_fan_out_cannot_omit_the_collection() -> None:
     it rather than from a checker later.
     """
     number = VariableSpec("number", int)
-    step = NodeSpec("step", inputs=(number,), outputs=(number,))
+    step = StepSpec("step", inputs=(number,), outputs=(number,))
 
     with pytest.raises(TypeError):
         MapEdgeSpec(source=START, target=step)
@@ -84,7 +84,7 @@ def test_a_streaming_node_is_declared_and_fans_out() -> None:
     words = VariableSpec("words", list)
     text = VariableSpec("text", str)
 
-    split = NodeSpec("split", inputs=(text,), outputs=(words,), streams=True)
+    split = StepSpec("split", inputs=(text,), outputs=(words,), streams=True)
     collect = JoinSpec("collect", reduce_list_append, initial_factory=list,
                        inputs=(word,), outputs=(words,))
 
@@ -122,7 +122,7 @@ def test_a_generator_bound_to_a_non_streaming_node_fails_loudly() -> None:
     """
     text = VariableSpec("text", str)
     out = VariableSpec("out", object)
-    node = NodeSpec("node", inputs=(text,), outputs=(out,))     # streams NOT set
+    node = StepSpec("node", inputs=(text,), outputs=(out,))     # streams NOT set
 
     class NotStreaming(GraphSpec):
         name = "not_streaming"
@@ -150,7 +150,7 @@ def test_the_shopping_list_from_the_MapEdgeSpec_docstring_runs() -> None:
     cost = VariableSpec("cost", float)
     bill = VariableSpec("bill", float)
 
-    price = NodeSpec("price", inputs=(item,), outputs=(cost,))
+    price = StepSpec("price", inputs=(item,), outputs=(cost,))
     total = JoinSpec("total", reduce_sum, initial=0.0, inputs=(cost,), outputs=(bill,))
 
     class Shop(GraphSpec):
@@ -193,7 +193,7 @@ def test_a_fan_out_that_never_rejoins_is_refused() -> None:
     shopping = VariableSpec("shopping", list)
     item = VariableSpec("item", str)
     cost = VariableSpec("cost", float)
-    price = NodeSpec("price", inputs=(item,), outputs=(cost,))
+    price = StepSpec("price", inputs=(item,), outputs=(cost,))
 
     class NoJoin(GraphSpec):
         name = "no_join"
@@ -218,8 +218,8 @@ def test_the_join_need_not_be_adjacent_to_the_fan_out() -> None:
     doubled = VariableSpec("doubled", int)
     total_v = VariableSpec("total_v", int)
 
-    first = NodeSpec("first", inputs=(one,), outputs=(one,))
-    second = NodeSpec("second", inputs=(one,), outputs=(doubled,))
+    first = StepSpec("first", inputs=(one,), outputs=(one,))
+    second = StepSpec("second", inputs=(one,), outputs=(doubled,))
     total = JoinSpec("total", reduce_sum, initial=0, inputs=(doubled,), outputs=(total_v,))
 
     class TwoStepsThenJoin(GraphSpec):

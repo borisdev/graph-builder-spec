@@ -361,9 +361,9 @@ def test_rung9_a_real_fan_in_is_still_caught_alongside_a_decision() -> None:
     """The exclusivity analysis must not become a blanket amnesty for branching designs."""
     from examples.ladder.stage9_decision import (
         Log, Triage, complaint, handled, intake, report, report_out, route, verdict)
-    from workflow_workbench import EdgeSpec, NodeSpec
+    from workflow_workbench import EdgeSpec, StepSpec
 
-    sneak = NodeSpec("sneak", inputs=(verdict,), outputs=(handled,))
+    sneak = StepSpec("sneak", inputs=(verdict,), outputs=(handled,))
 
     class RealFanIn(Triage):
         name = "real_fan_in"

@@ -185,7 +185,7 @@ join computes N results and returns whichever lands first. `check_fan_out_rejoin
 
 | declaration | becomes | when |
 |---|---|---|
-| `NodeSpec` | `g.step` (or `g.stream` if `streams=True`) | build |
+| `StepSpec` | `g.step` (or `g.stream` if `streams=True`) | build |
 | `JoinSpec` | `g.join(reducer, initial=…)` | build |
 | `DecisionSpec` + `when=` edges | `g.decision()` + `g.match(T).to(…)` branches | build |
 | `EdgeSpec` | a `Path` of `[LabelMarker, DestinationMarker]` | build |
