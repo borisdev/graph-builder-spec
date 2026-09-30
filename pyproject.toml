@@ -2,11 +2,18 @@
 name = "workflow-workbench"
 version = "0.1.0"
 description = "One fixed graph design, many competing implementations — checked, diagrammed, and battled on Pydantic Evals"
+readme = "README.md"
 requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
     "pydantic-graph>=2.0",
     "pydantic>=2.0,<3",
 ]
+
+[project.urls]
+Homepage = "https://github.com/borisdev/workflow-workbench"
+Source = "https://github.com/borisdev/workflow-workbench"
 
 [project.optional-dependencies]
 evals = ["pydantic-evals>=2.0"]

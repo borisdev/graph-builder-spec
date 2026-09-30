@@ -261,6 +261,10 @@ Downstream of community requests for
 [reusable subgraphs](https://github.com/pydantic/pydantic-ai/issues/3901) — complementary to
 native Pydantic Graph, not a proposal to change it.
 
+## Licence
+
+MIT — see [LICENSE](LICENSE).
+
 ## Verify it rather than believe it
 
 ```bash
