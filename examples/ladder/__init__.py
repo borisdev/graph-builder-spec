@@ -1,7 +1,10 @@
 """A ladder: one hello-world design, gaining one capability per rung.
 
-Every rung is three things that must agree — a README section, the module here, and a test in
-`tests/test_ladder.py`. If they ever disagree, the test is the one that goes red.
+Every rung is three things that must agree — a row in `docs/ladder.md`, the module here, and a
+test in `tests/test_ladder.py`. If they ever disagree, the test is the one that goes red.
+
+⚠️ `docs/ladder.md`, not the README: the README walks through `examples/greeting.py` instead, and
+`test_the_ladder_doc_lists_every_rung_module` is what keeps a new rung from going unmentioned.
 
     their_hello           pydantic-graph alone. The control: what you get with no library.
     stage1_bare           the same design as a GraphSpec. One strategy.

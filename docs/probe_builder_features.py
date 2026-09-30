@@ -235,10 +235,9 @@ print()
 
 # ── the table lives in workflow_workbench/parity.py — ONE definition ────────────────────────
 #
-# ⛔ It used to live here, hand-written from a grep, and missed five features while reading as a
-# complete inventory of the gaps. Then the README grew its own copy. Two descriptions of one
-# thing is the drift `.claude/rules/spec-as-code.md` exists to prevent, so there is now one:
-# `parity.py` is source, the README appendix is generated from it, and this probe reads it.
+# ⛔ Two descriptions of one thing is the drift `.claude/rules/spec-as-code.md` exists to
+# prevent, so there is exactly one: `parity.py` is source, `docs/parity.md` is generated from it,
+# and this probe reads it rather than keeping its own copy.
 from workflow_workbench.parity import FEATURES  # noqa: E402
 
 ORDER = {"yes": 0, "partial": 1, "refused": 2, "cannot": 3, "plumbing": 4}
@@ -256,7 +255,7 @@ print(f"\n{counts['yes']} declarable, {counts['partial']} partial, "
       f"— out of {len(topo)}.")
 print("⚠️ `refused` and `cannot` are NOT the same as missing, and are kept apart on purpose:")
 print("   collapsing them into 'no' is how a design decision comes to read as a gap, and how the")
-print("   next person 'fixes' it. Full side-by-side examples: README appendix, or")
+print("   next person 'fixes' it. Full side-by-side examples: docs/parity.md, or")
 print("   `python3 -m workflow_workbench.parity`.")
 
 

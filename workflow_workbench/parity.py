@@ -1,16 +1,17 @@
 """Every Pydantic Graph builder feature, theirs beside ours. SOURCE, not documentation.
 
-⛔ THIS FILE IS THE ONE DEFINITION. The README appendix is GENERATED from it and
+⛔ THIS FILE IS THE ONE DEFINITION. The table in `docs/parity.md` is GENERATED from it and
 `tests/test_parity.py` fails if the two disagree — `.claude/rules/spec-as-code.md`: a document is
 either source or derived, and mixing them is the whole failure mode.
 
     python3 -m workflow_workbench.parity          # print the markdown
-    python3 -m workflow_workbench.parity --check   # exit 1 if the README is stale
+    python3 -m workflow_workbench.parity --write   # rewrite docs/parity.md
+    python3 -m workflow_workbench.parity --check   # exit 1 if docs/parity.md is stale
 
-Why it exists at all: an earlier version of this table lived in a probe, hand-written from a grep,
-and MISSED FIVE features while reading as a complete inventory of the gaps. A list of someone
-else's API is wrong the moment they add to it. `docs/probe_builder_features.py` introspects
-`GraphBuilder` and fails on any public method absent from `FEATURES` below.
+Why it exists at all: a list of someone else's API is wrong the moment they add to it, and a
+hand-written one reads as a complete inventory of the gaps while missing whole features.
+`docs/probe_builder_features.py` introspects `GraphBuilder` and fails on any public method absent
+from `FEATURES` below.
 """
 from __future__ import annotations
 
@@ -167,10 +168,10 @@ _LABEL = {"yes": "**yes**", "partial": "partial", "refused": "refused, on purpos
 
 
 def as_markdown() -> str:
-    """The appendix. Regenerate with `python3 -m workflow_workbench.parity`."""
-    out = ["## Appendix: every Pydantic Graph builder feature, theirs beside ours", "",
+    """The table for `docs/parity.md`. Write it with `--write`."""
+    out = ["## Every builder feature, theirs beside ours", "",
            "<!-- GENERATED from workflow_workbench/parity.py — do not edit by hand. -->",
-           "<!-- Regenerate: python3 -m workflow_workbench.parity -->", ""]
+           "<!-- Regenerate: python3 -m workflow_workbench.parity --write -->", ""]
     for f in FEATURES:
         if f.status == "plumbing":
             continue
@@ -189,27 +190,36 @@ START_MARK = "<!-- parity:start -->"
 END_MARK = "<!-- parity:end -->"
 
 
-def _readme() -> tuple[str, str]:
+def _target():
+    """The ONE derived document. `docs/parity.md`, not the README — the README is a walkthrough
+    and a generated inventory of someone else's API does not belong in one."""
     import pathlib
-    p = pathlib.Path(__file__).resolve().parent.parent / "README.md"
-    return p.read_text(), str(p)
+    return pathlib.Path(__file__).resolve().parent.parent / "docs" / "parity.md"
 
 
 def main() -> int:
     body = as_markdown()
-    if "--check" not in sys.argv:
+    if "--check" not in sys.argv and "--write" not in sys.argv:
         print(body)
         return 0
-    text, path = _readme()
+    target = _target()
+    text, path = target.read_text(), str(target)
     if START_MARK not in text or END_MARK not in text:
         print(f"{path}: parity markers missing")
         return 1
-    current = text.split(START_MARK, 1)[1].split(END_MARK, 1)[0].strip()
-    if current != body.strip():
-        print(f"{path}: the appendix is stale. Regenerate:\n"
-              f"  python3 -m workflow_workbench.parity")
+    head, rest = text.split(START_MARK, 1)
+    _stale, tail = rest.split(END_MARK, 1)
+    if "--write" in sys.argv:
+        # ⚠️ `--write` exists so nobody has to paste the table by hand. A derived document that
+        # can only be regenerated manually is one someone will "just fix" in place instead.
+        target.write_text(f"{head}{START_MARK}\n{body.strip()}\n{END_MARK}{tail}")
+        print(f"{path}: rewritten from parity.py")
+        return 0
+    if _stale.strip() != body.strip():
+        print(f"{path}: the table is stale. Regenerate:\n"
+              f"  python3 -m workflow_workbench.parity --write")
         return 1
-    print("README appendix matches parity.py")
+    print(f"{path} matches parity.py")
     return 0
 
 

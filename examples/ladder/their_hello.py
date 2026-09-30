@@ -7,11 +7,11 @@ builder docs: two steps, the second formatting the first's output.
     theirs      step_a -> 10          step_b -> f'Result: {ctx.inputs}'
     ours        pick   -> 'Hello'     compose -> f'{salutation}, {name}!'
 
-⚠️ This rung exists to be the BASELINE, not a strawman. Read it and notice that it is fine. One
-graph with one implementation per step needs nothing else, and the README says so out loud: if
-this is your situation, use Pydantic Graph directly and stop here.
+⚠️ This rung exists to be the BASELINE, not a strawman. Read it and notice that it is fine — one
+graph with one implementation per step runs perfectly well like this.
 
-What it cannot do is the next rung's question — "and what if `pick` were written differently?"
+What it cannot do is check or draw itself before the steps are written, and it cannot answer the
+next rung's question — "and what if `pick` were written differently?"
 
     uv run python3 -m examples.ladder.their_hello
 """
