@@ -199,37 +199,54 @@ def test_every_rung_runs_as_a_script(module: str) -> None:
     mod.main()
 
 
-def test_every_readme_link_into_examples_or_docs_resolves() -> None:
-    """The README↔code mapping, enforced.
+def test_every_link_into_the_repo_resolves() -> None:
+    """The doc↔code mapping, enforced across EVERY markdown file, not just the README.
 
-    ⚠️ A README that links a file which was renamed or never written is the confidently-wrong doc
+    ⚠️ A doc that links a file which was renamed or never written is the confidently-wrong doc
     `.claude/rules/spec-as-code.md` is about: it makes a reader skip looking at the code, and
-    nothing else in this repo would notice. This is the cheapest possible check that it does not
-    happen, and it goes red the moment a rung is renamed.
+    nothing else in this repo would notice.
+
+    ⚠️ Links resolve relative to the LINKING FILE, which is why this is not a plain root join —
+    `docs/ladder.md` reaches the examples as `../examples/...` and a root-relative check would
+    call every one of them missing.
     """
     import re
     from pathlib import Path
 
     root = Path(__file__).resolve().parent.parent
-    readme = (root / "README.md").read_text()
-    links = re.findall(r"\]\((examples/[^)#]+|docs/[^)#]+|tests/[^)#]+)\)", readme)
+    docs = sorted(root.glob("*.md")) + sorted(root.glob("docs/*.md"))
+    assert docs, "no markdown at all"
 
-    assert links, "no links into the repo at all — the ladder table has gone missing"
-    missing = [ln for ln in links if not (root / ln).exists()]
-    assert not missing, f"README links files that do not exist: {missing}"
+    missing = []
+    seen = 0
+    for doc in docs:
+        # any relative link to a file in the repo — `docs/x.md`, `../examples/y.py`, `z.py`.
+        # Broader than a path-prefix match on purpose: a sibling link like `probe_api.py` is
+        # exactly as breakable and was previously unchecked.
+        for link in re.findall(r"\]\((?!https?:|#)([^)#\s]+\.(?:py|md))\)", doc.read_text()):
+            seen += 1
+            if not (doc.parent / link).resolve().exists():
+                missing.append(f"{doc.relative_to(root)} -> {link}")
+    assert seen, "no links into the repo at all — a doc has gone missing"
+    assert not missing, f"links to files that do not exist: {missing}"
 
 
-def test_the_readme_ladder_table_lists_every_rung_module() -> None:
-    """The other direction: a rung that exists but nobody is told about."""
+def test_the_ladder_doc_lists_every_rung_module() -> None:
+    """The other direction: a rung that exists but nobody is told about.
+
+    ⚠️ `docs/ladder.md`, not the README. The tutorial moved out so the README could stay a
+    walkthrough of one example; this check moved with it rather than being dropped, because the
+    failure it catches — a new rung nobody is told about — did not move anywhere.
+    """
     from pathlib import Path
 
     root = Path(__file__).resolve().parent.parent
-    readme = (root / "README.md").read_text()
+    ladder_doc = (root / "docs" / "ladder.md").read_text()
     modules = sorted(p.name for p in (root / "examples" / "ladder").glob("*.py")
                      if p.name != "__init__.py")
 
-    unlisted = [m for m in modules if f"examples/ladder/{m}" not in readme]
-    assert not unlisted, f"ladder modules missing from the README table: {unlisted}"
+    unlisted = [m for m in modules if f"examples/ladder/{m}" not in ladder_doc]
+    assert not unlisted, f"ladder modules missing from docs/ladder.md: {unlisted}"
 
 
 # ── rung 8: a declared join ─────────────────────────────────────────────────────────────────
@@ -344,9 +361,9 @@ def test_rung9_a_real_fan_in_is_still_caught_alongside_a_decision() -> None:
     """The exclusivity analysis must not become a blanket amnesty for branching designs."""
     from examples.ladder.stage9_decision import (
         Log, Triage, complaint, handled, intake, report, report_out, route, verdict)
-    from workflow_workbench import EdgeSpec, NodeSpec
+    from workflow_workbench import EdgeSpec, StepSpec
 
-    sneak = NodeSpec("sneak", inputs=(verdict,), outputs=(handled,))
+    sneak = StepSpec("sneak", inputs=(verdict,), outputs=(handled,))
 
     class RealFanIn(Triage):
         name = "real_fan_in"

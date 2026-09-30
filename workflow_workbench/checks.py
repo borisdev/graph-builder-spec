@@ -14,12 +14,14 @@ from collections.abc import Callable
 from typing import Any
 
 from workflow_workbench.spec import (
+    Bindable,
     DecisionSpec,
+    NodeSpec,
     EdgeSpec,
     JoinSpec,
     MapEdgeSpec,
     TransformEdgeSpec,
-    NodeSpec,
+    StepSpec,
     StrategySpec,
     SubgraphBinding,
     _End,
@@ -47,7 +49,7 @@ def _type_name(t: Any) -> str:
 def check_names(nodes: tuple[NodeSpec, ...]) -> list[str]:
     """Node names must be unique — `render()` uses them as graph node ids.
 
-    ⚠️ This check exists BECAUSE `NodeSpec` is `eq=False`. Identity keying is what stops a
+    ⚠️ This check exists BECAUSE `StepSpec` is `eq=False`. Identity keying is what stops a
     copy-pasted declaration silently overwriting another's implementation; the cost is that two
     distinct nodes may share a name, and pydantic-graph would then refuse with a message about
     node ids that points at the render, not at the declaration.
@@ -59,7 +61,7 @@ def check_names(nodes: tuple[NodeSpec, ...]) -> list[str]:
         if len(group) > 1:
             findings.append(
                 f"{len(group)} different nodes are named {name!r}. Node names become graph node "
-                f"ids, so this cannot be rendered — and because NodeSpec is identity-keyed these "
+                f"ids, so this cannot be rendered — and because StepSpec is identity-keyed these "
                 f"really are separate nodes, not one node declared twice.")
     return findings
 
@@ -133,7 +135,7 @@ def check_variables(nodes: tuple[NodeSpec, ...], edges: tuple[EdgeSpec, ...]) ->
     node's declared outputs covered by the set of variables its successors consume" — passes on a
     SWAP, which is the exact defect this check was written for:
 
-        split = NodeSpec("split", outputs=(stream_a, stream_b))
+        split = StepSpec("split", outputs=(stream_a, stream_b))
         EdgeSpec(source=split, target=consume_a, carries=stream_b)      # swapped
         EdgeSpec(source=split, target=consume_b, carries=stream_a)      # swapped
 
@@ -169,14 +171,14 @@ def check_variables(nodes: tuple[NodeSpec, ...], edges: tuple[EdgeSpec, ...]) ->
     return findings
 
 
-def check_bindings(bindables: tuple[Any, ...], strategy: StrategySpec) -> list[str]:
+def check_bindings(bindables: tuple[Bindable, ...], strategy: StrategySpec) -> list[str]:
     """The strategy binds exactly the declared VARIATION POINTS — no missing, no extra.
 
     ⚠️ `bindables`, not `nodes`. A `TransformEdgeSpec` with no `apply=` is a variation point too,
     and it lives in `edges`. What makes something bindable is not where it is declared but whether
     the design left its implementation open.
 
-    ⚠️ Compared by IDENTITY, matching `NodeSpec.__hash__`. Comparing by name would accept a
+    ⚠️ Compared by IDENTITY, matching `StepSpec.__hash__`. Comparing by name would accept a
     binding keyed on a look-alike node from another design, which is the failure identity keying
     exists to prevent.
     """
@@ -239,17 +241,17 @@ def _graph_name(graph: Any) -> str:
     return graph.name or type(graph).__name__
 
 
-def _port_type(parent: Any, node: NodeSpec, side: str) -> tuple[Any, str | None]:
+def _port_type(parent: Any, node: StepSpec, side: str) -> tuple[Any, str | None]:
     """The type crossing one side of `node`'s boundary, and any finding about resolving it.
 
     ⚠️ START and END are EXCEPTIONS, and they are why this function exists instead of a length
     check. A node declaring no input variable is idiomatic when it is fed from START —
 
-        increment = NodeSpec("increment", outputs=(count,))
+        increment = StepSpec("increment", outputs=(count,))
         EdgeSpec(source=START, target=increment)                       # carries the graph's own input_type
 
     — so rejecting it would force a DESIGN edit in order to add a strategy, which is exactly the
-    thing a stable `NodeSpec` is supposed to make unnecessary. There is a real type available in
+    thing a stable `StepSpec` is supposed to make unnecessary. There is a real type available in
     that case: the parent graph's `input_type`. Use it.
 
     Returns `(type, None)` when the boundary type is known, or `(None, finding)` when it is not.
@@ -424,7 +426,7 @@ def _exclusive_groups(decisions: tuple[DecisionSpec, ...],
     return groups
 
 
-def check_step_arity(nodes: tuple[NodeSpec, ...], edges: tuple[EdgeSpec, ...],
+def check_step_arity(nodes: tuple[StepSpec, ...], edges: tuple[EdgeSpec, ...],
                      *, decisions: tuple[DecisionSpec, ...] = ()) -> list[str]:
     """A step body receives exactly ONE value, so a node cannot consume two inputs at once.
 
@@ -434,7 +436,7 @@ def check_step_arity(nodes: tuple[NodeSpec, ...], edges: tuple[EdgeSpec, ...],
     ⛔ This is the fan-in defect, and it is silent in every other check. Measured against
     pydantic-graph 2.35.1 with `docs/probe_builder_features.py`'s shape:
 
-        merge = NodeSpec("merge", inputs=(left, right), outputs=(out,))
+        merge = StepSpec("merge", inputs=(left, right), outputs=(out,))
         EdgeSpec(source=step_a, target=merge, carries=left)        # step_a produced 2
         EdgeSpec(source=step_b, target=merge, carries=right)       # step_b produced 3
 
@@ -575,7 +577,7 @@ def check_variable_types(parent: Any, strategy: StrategySpec) -> list[str]:
 
     ⛔ WHY THIS EXISTS, measured before it was written:
 
-        wrong = NodeSpec("wrong", inputs=(text,), outputs=(number,))   # declares int
+        wrong = StepSpec("wrong", inputs=(text,), outputs=(number,))   # declares int
         async def returns_a_string(ctx) -> str: ...                    # returns str
 
         check() -> clean
@@ -705,11 +707,11 @@ def check_transform_edges(edges: tuple[EdgeSpec, ...], strategy: StrategySpec | 
                 f"{e!r} is bound to an ASYNC function. A transform runs on the wire and cannot "
                 f"await — pydantic-graph would not reject it, it would quietly pass a coroutine "
                 f"object to the next step. If it needs to await, it is a stage: give it a "
-                f"NodeSpec.")
+                f"StepSpec.")
     return findings
 
 
-def check_fan_out_rejoins(nodes: tuple[Any, ...], edges: tuple[EdgeSpec, ...]) -> list[str]:
+def check_fan_out_rejoins(nodes: tuple[NodeSpec, ...], edges: tuple[EdgeSpec, ...]) -> list[str]:
     """Everything a fan-out produces must reach a join before it reaches END.
 
     ⛔ THE MIRROR OF `check_step_arity`, and it was missing. Measured on a three-item shopping

@@ -19,7 +19,7 @@ from workflow_workbench import (
     START,
     EdgeSpec,
     GraphSpec,
-    NodeSpec,
+    StepSpec,
     SpecError,
     StrategySpec,
     SubgraphBinding,
@@ -40,7 +40,7 @@ class Deps:
 text = VariableSpec("text", str)
 number = VariableSpec("number", int)
 
-transform = NodeSpec("transform", inputs=(text,), outputs=(text,))
+transform = StepSpec("transform", inputs=(text,), outputs=(text,))
 
 
 class Parent(GraphSpec):
@@ -59,8 +59,8 @@ async def direct(ctx) -> str:
     return f"{ctx.deps.prefix}{ctx.inputs.strip().upper()}"
 
 
-first = NodeSpec("first", inputs=(text,), outputs=(text,))
-second = NodeSpec("second", inputs=(text,), outputs=(text,))
+first = StepSpec("first", inputs=(text,), outputs=(text,))
+second = StepSpec("second", inputs=(text,), outputs=(text,))
 
 
 class Child(GraphSpec):
@@ -149,7 +149,7 @@ def test_a_callable_arm_and_a_subgraph_arm_are_one_design() -> None:
 # ── the boundary contract ───────────────────────────────────────────────────────────────────
 
 def test_subgraph_input_mismatch_is_rejected() -> None:
-    other = NodeSpec("other", inputs=(number,), outputs=(text,))
+    other = StepSpec("other", inputs=(number,), outputs=(text,))
 
     class WrongInput(GraphSpec):
         name = "wrong_input"
@@ -169,7 +169,7 @@ def test_subgraph_input_mismatch_is_rejected() -> None:
 
 
 def test_subgraph_output_mismatch_is_rejected() -> None:
-    other = NodeSpec("other", inputs=(text,), outputs=(number,))
+    other = StepSpec("other", inputs=(text,), outputs=(number,))
 
     class WrongOutput(GraphSpec):
         name = "wrong_output"
@@ -233,7 +233,7 @@ def test_incomplete_child_strategy_is_rejected() -> None:
 
 # ── START and END are exceptions to the one-port rule ───────────────────────────────────────
 
-passthrough = NodeSpec("passthrough", inputs=(text,), outputs=(text,))
+passthrough = StepSpec("passthrough", inputs=(text,), outputs=(text,))
 
 
 class StartEndParent(GraphSpec):
@@ -249,7 +249,7 @@ class StartEndParent(GraphSpec):
 def test_a_node_wired_to_the_sentinels_is_checked_like_any_other() -> None:
     """⛔ THIS TEST USED TO ASSERT THE OPPOSITE, and the change is worth understanding.
 
-    It was `test_a_node_wired_to_the_sentinels_needs_no_declared_variables`: a NodeSpec declaring
+    It was `test_a_node_wired_to_the_sentinels_needs_no_declared_variables`: a StepSpec declaring
     nothing, edges carrying nothing, and `_port_type` falling back to the graph's own
     input_type/output_type to check a subgraph boundary.
 
@@ -270,7 +270,7 @@ def test_a_node_wired_to_the_sentinels_is_checked_like_any_other() -> None:
 
 def test_a_node_that_declares_nothing_is_now_refused() -> None:
     """The transitive consequence, pinned so it is a decision rather than a surprise."""
-    silent = NodeSpec("silent")
+    silent = StepSpec("silent")
 
     class Silent(GraphSpec):
         name = "silent_design"
@@ -291,7 +291,7 @@ def test_a_subgraph_boundary_is_checked_against_the_declared_variables() -> None
 
     class IntInput(StartEndParent):
         input_type = int
-        nodes = (NodeSpec("passthrough", inputs=(number,), outputs=(number,)),)
+        nodes = (StepSpec("passthrough", inputs=(number,), outputs=(number,)),)
         edges = ()
 
     other = IntInput.nodes[0]
@@ -308,8 +308,8 @@ def test_a_subgraph_boundary_is_checked_against_the_declared_variables() -> None
         IntDesign().render(strategy)
 
 
-mid_first = NodeSpec("mid_first", inputs=(text,), outputs=(text,))
-mid_second = NodeSpec("mid_second", inputs=(text,), outputs=(text,))
+mid_first = StepSpec("mid_first", inputs=(text,), outputs=(text,))
+mid_second = StepSpec("mid_second", inputs=(text,), outputs=(text,))
 
 
 class MidParent(GraphSpec):
@@ -343,7 +343,7 @@ def test_a_mid_chain_subgraph_boundary_is_checked_from_the_declaration() -> None
     MidParent().render(strategy)
 
 
-two_in = NodeSpec("two_in", inputs=(text, number), outputs=(text,))
+two_in = StepSpec("two_in", inputs=(text, number), outputs=(text,))
 
 
 class MultiPortParent(GraphSpec):
@@ -426,9 +426,9 @@ def test_devserver_payload_shows_the_child_design_not_a_blank_panel() -> None:
 left = VariableSpec("left", str)
 right = VariableSpec("right", str)
 
-split_a = NodeSpec("split_a", inputs=(text,), outputs=(left,))
-split_b = NodeSpec("split_b", inputs=(text,), outputs=(right,))
-merge = NodeSpec("merge", inputs=(left, right), outputs=(text,))
+split_a = StepSpec("split_a", inputs=(text,), outputs=(left,))
+split_b = StepSpec("split_b", inputs=(text,), outputs=(right,))
+merge = StepSpec("merge", inputs=(left, right), outputs=(text,))
 
 
 class FanIn(GraphSpec):
@@ -508,10 +508,10 @@ def test_a_retry_loop_is_not_reported_as_a_fan_in() -> None:
     verdict = VariableSpec("verdict", object)
     out_v = VariableSpec("out_v", str)
 
-    propose = NodeSpec("propose", inputs=(seed,), outputs=(draft,))
-    judge = NodeSpec("judge", inputs=(draft,), outputs=(verdict,))
-    unwrap = NodeSpec("unwrap", inputs=(verdict,), outputs=(seed,))
-    finish = NodeSpec("finish", inputs=(verdict,), outputs=(out_v,))
+    propose = StepSpec("propose", inputs=(seed,), outputs=(draft,))
+    judge = StepSpec("judge", inputs=(draft,), outputs=(verdict,))
+    unwrap = StepSpec("unwrap", inputs=(verdict,), outputs=(seed,))
+    finish = StepSpec("finish", inputs=(verdict,), outputs=(out_v,))
     route = DecisionSpec("route", inputs=(verdict,), outputs=(verdict,))
 
     class WithRetry(GraphSpec):
@@ -559,9 +559,9 @@ def test_a_retry_loop_is_not_reported_as_a_fan_in() -> None:
 def test_a_real_fan_in_is_still_caught_next_to_a_loop() -> None:
     """The back-edge exclusion must not become an amnesty for every multi-edge node."""
     a_var = VariableSpec("a_var", str)
-    one = NodeSpec("one", inputs=(text,), outputs=(a_var,))
-    two = NodeSpec("two", inputs=(text,), outputs=(a_var,))
-    sink = NodeSpec("sink", inputs=(a_var,), outputs=(text,))
+    one = StepSpec("one", inputs=(text,), outputs=(a_var,))
+    two = StepSpec("two", inputs=(text,), outputs=(a_var,))
+    sink = StepSpec("sink", inputs=(a_var,), outputs=(text,))
 
     class RealFanIn(GraphSpec):
         name = "real_fan_in"

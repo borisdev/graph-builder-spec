@@ -6,11 +6,11 @@ import pytest
 from pydantic_evals import Case, Dataset
 from pydantic_evals.evaluators import Evaluator, EvaluatorContext
 
-from workflow_workbench import END, START, EdgeSpec, GraphSpec, NodeSpec, StrategySpec, VariableSpec
+from workflow_workbench import END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec, VariableSpec
 from workflow_workbench.evals import BattleResult, eval_battle, pairwise_battle
 
 text = VariableSpec("text", str)
-work = NodeSpec("work", inputs=(text,), outputs=(text,))
+work = StepSpec("work", inputs=(text,), outputs=(text,))
 
 
 class Job(GraphSpec):

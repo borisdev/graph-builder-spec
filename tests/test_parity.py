@@ -1,8 +1,11 @@
-"""The parity appendix is DERIVED, and this is what stops it drifting.
+"""`docs/parity.md`'s table is DERIVED, and this is what stops it drifting.
 
-⛔ Its ancestor was a hand-written table that missed five features while reading as a complete
-inventory of the gaps. `.claude/rules/spec-as-code.md`: a document is either source or derived,
-and the check is the rule — an unchecked convention drifts back within a month.
+`.claude/rules/spec-as-code.md`: a document is either source or derived, and the check is the
+rule — an unchecked convention drifts back within a month.
+
+⚠️ The lints at the foot of this file cover EVERY markdown file, not just the README. The table
+moved to `docs/parity.md` when the README became a walkthrough, and a lint that still read only
+the README would have gone quiet on the file most likely to name a retired API.
 """
 from __future__ import annotations
 
@@ -15,8 +18,8 @@ from workflow_workbench.parity import FEATURES, as_markdown
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_the_readme_appendix_is_regenerated_from_parity_py() -> None:
-    """Edit `parity.py`, regenerate, commit both. Editing the README alone turns this red."""
+def test_the_parity_doc_is_regenerated_from_parity_py() -> None:
+    """Edit `parity.py`, regenerate, commit both. Editing `docs/parity.md` alone turns this red."""
     proc = subprocess.run([sys.executable, "-m", "workflow_workbench.parity", "--check"],
                           cwd=ROOT, capture_output=True, text=True, timeout=120)
     assert proc.returncode == 0, proc.stdout + proc.stderr
@@ -84,10 +87,10 @@ def test_the_appendix_names_the_workaround_for_everything_not_covered() -> None:
 
 
 def test_the_source_warns_where_an_agent_would_trip() -> None:
-    """⛔ The README appendix is for users. THIS is for whoever edits the code next.
+    """⛔ `docs/parity.md` is for users. THIS is for whoever edits the code next.
 
     Every refusal looks like an obvious omission at the declaration site — `EdgeSpec` has no
-    `transform=`, `NodeSpec` cannot hold a `BaseNode`, `GraphSpec` has no wiring hook — and each
+    `transform=`, `StepSpec` cannot hold a `BaseNode`, `GraphSpec` has no wiring hook — and each
     one is a decision that took measurement to reach. A warning that lives only in the README is
     a warning nobody reading `spec.py` will see.
     """
@@ -95,8 +98,8 @@ def test_the_source_warns_where_an_agent_would_trip() -> None:
     graph_src = (ROOT / "workflow_workbench" / "graph_spec.py").read_text()
 
     assert "FOR A FUTURE AGENT" in spec_src, "spec.py lost its warnings"
-    assert spec_src.count("FOR A FUTURE AGENT") >= 2, "NodeSpec and EdgeSpec each need one"
-    assert "BaseNode" in spec_src, "NodeSpec must say why a BaseNode is not one"
+    assert spec_src.count("FOR A FUTURE AGENT") >= 2, "StepSpec and EdgeSpec each need one"
+    assert "BaseNode" in spec_src, "StepSpec must say why a BaseNode is not one"
     assert "transform=" in spec_src and "matches=" in spec_src, (
         "EdgeSpec must name the two fields people try to add")
     assert "FOR A FUTURE AGENT" in graph_src, "graph_spec.py lost its warning"
@@ -112,47 +115,72 @@ def test_the_probe_reads_parity_rather_than_keeping_its_own_copy() -> None:
     assert "MATRIX: dict" not in probe, "the probe grew a second table again"
 
 
-def test_the_readme_uses_the_current_api() -> None:
+#: The two documents whose JOB is to name the old API. Everything else must not.
+#:
+#: ⛔ This is an exception by FILE, which is wider than the by-LINE exception below, so it is
+#: spelled out rather than globbed: `docs/migration-*.md` would silently cover a new file nobody
+#: reviewed. `test_the_retirement_exemptions_all_exist` fails if either path is renamed, so the
+#: exemption cannot outlive the document it was written for.
+_NAMES_THE_OLD_API = ("CHANGELOG.md", "docs/migration-0.2.md")
+
+
+def _prose_docs(*, include_migration: bool = True) -> list[tuple[str, str]]:
+    """Every markdown file a reader might copy code out of, as (name, text).
+
+    ⚠️ Not just the README. `docs/` holds the ladder, the design notes and the generated parity
+    table, and a snippet in any of them is one a reader will paste.
+    """
+    paths = sorted(ROOT.glob("*.md")) + sorted(ROOT.glob("docs/*.md"))
+    out = [(str(p.relative_to(ROOT)), p.read_text()) for p in paths]
+    if not include_migration:
+        out = [(n, t) for n, t in out if n not in _NAMES_THE_OLD_API]
+    return out
+
+
+def test_the_retirement_exemptions_all_exist() -> None:
+    """A stale exemption is worse than none: it names a file nobody will notice is gone, and the
+    lint it disables goes quiet on whatever takes that path next."""
+    missing = [n for n in _NAMES_THE_OLD_API if not (ROOT / n).exists()]
+    assert not missing, (
+        f"these files are exempt from the retired-API lint but do not exist: {missing}. "
+        f"Delete the exemption or fix the path.")
+
+
+def test_the_docs_use_the_current_api() -> None:
     """⛔ The README's own code stopped running and nothing said so.
 
     `EdgeSpec(START, increment)` sat in the opening example after `carries` became required and
-    the edge specs became keyword-only — so the first thing a reader copies was a `TypeError`,
-    twice over. The generated appendix beside it was correct the whole time, which is the tell:
+    the edge specs became keyword-only — so the first thing a reader copied was a `TypeError`,
+    twice over. The generated table beside it was correct the whole time, which is the tell:
     derived text survived, hand-written text rotted.
 
-    This is the cheap lint that would have caught it. Not a substitute for the snippets being
-    lifted from tested files — which is now how the opening example and rung 1 are written — but
-    it goes red on the next rename without anyone remembering to look.
+    This is the cheap lint that would have caught it. Not a substitute for snippets being lifted
+    from tested files — which is how the walkthrough is written — but it goes red on the next
+    rename without anyone remembering to look.
     """
-    readme = (ROOT / "README.md").read_text()
-
-    # ⛔ THIS LINT HAD A BLIND SPOT AND IT LET THE EXACT BUG THROUGH. It used to read only
-    # `readme.split("⛔ This used to be a second table")[0]` — meant to skip one sentence that
-    # NAMES a retired token while explaining the staleness, but that split lands at line 162 of
-    # 485, so two thirds of the file went unchecked. Sitting just past the cutoff was a paragraph
-    # saying "everything not declarable runs only through build_pydantic_structure()", directly
-    # contradicting the "there is no escape hatch" claim five lines above it.
-    #
-    # Now the whole file is checked and only the lines that TALK ABOUT a retirement are skipped —
-    # narrow the exception, never the scope.
-    body = "\n".join(line for line in readme.splitlines()
-                     if "used to" not in line and "was deleted" not in line)
-
     retired = {
         "map_over=": "renamed — a fan-out is MapEdgeSpec(carries=…, delivers=…)",
         "produces=": "renamed to `delivers`",
-        "build_pydantic_structure": "deleted; there is no wiring hook",
-        "check_built_topology": "deleted with the hook it policed",
+        "build_pydantic_structure": "there is no wiring hook",
+        "check_built_topology": "gone, with the hook it policed",
+        "NodeSpec(": "renamed in 0.2.0 — the class is StepSpec; NodeSpec is now the union "
+                     "StepSpec | JoinSpec | DecisionSpec. See docs/migration-0.2.md",
     }
-    for token, why in retired.items():
-        assert token not in body, f"README still shows `{token}` — {why}"
+    for name, text in _prose_docs(include_migration=False):
+        # ⚠️ Only the lines that TALK ABOUT a retirement are skipped — narrow the exception,
+        # never the scope. An earlier version split the file at one sentence and left two thirds
+        # of it unchecked, which let a paragraph contradicting the escape-hatch claim through.
+        body = "\n".join(line for line in text.splitlines()
+                         if "used to" not in line and "was deleted" not in line)
+        for token, why in retired.items():
+            assert token not in body, f"{name} still shows `{token}` — {why}"
 
 
-def test_the_readme_never_calls_an_edge_positionally() -> None:
+def test_no_doc_ever_calls_an_edge_positionally() -> None:
     """Edge fields are keyword-only. A positional example is a `TypeError` a reader would copy."""
     import re
 
-    readme = (ROOT / "README.md").read_text()
-    # `EdgeSpec(` (or a subclass) whose first argument is not a keyword
-    bad = re.findall(r"\b(?:Map|Transform)?EdgeSpec\(\s*(?!source=|\s*$)[A-Za-z_]", readme)
-    assert not bad, f"{len(bad)} positional edge call(s) in the README; every field is keyword-only"
+    for name, text in _prose_docs():
+        # `EdgeSpec(` (or a subclass) whose first argument is not a keyword
+        bad = re.findall(r"\b(?:Map|Transform)?EdgeSpec\(\s*(?!source=|\s*$)[A-Za-z_]", text)
+        assert not bad, f"{len(bad)} positional edge call(s) in {name}; every field is keyword-only"

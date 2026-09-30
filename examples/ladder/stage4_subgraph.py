@@ -35,7 +35,7 @@ from workflow_workbench import (
     START,
     EdgeSpec,
     GraphSpec,
-    NodeSpec,
+    StepSpec,
     StrategySpec,
     SubgraphBinding,
     VariableSpec,
@@ -61,8 +61,8 @@ class TracedHello(TranslatedHello):
 
 language = VariableSpec("language", str)
 
-detect = NodeSpec("detect", inputs=(greeting,), outputs=(language,))
-render = NodeSpec("render", inputs=(language,), outputs=(spoken,))
+detect = StepSpec("detect", inputs=(greeting,), outputs=(language,))
+render = StepSpec("render", inputs=(language,), outputs=(spoken,))
 
 
 class Translation(GraphSpec):

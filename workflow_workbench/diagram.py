@@ -18,11 +18,12 @@ from typing import Any
 
 from workflow_workbench.spec import (
     DecisionSpec,
+    NodeSpec,
     EdgeSpec,
     MapEdgeSpec,
     TransformEdgeSpec,
     JoinSpec,
-    NodeSpec,
+    StepSpec,
     StrategySpec,
     SubgraphBinding,
     _End,

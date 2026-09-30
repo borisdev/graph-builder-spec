@@ -1,14 +1,15 @@
 """The declarative half: nodes, edges, and what fills them in.
 
     VariableSpec     a named, typed value that may flow along an edge
-    NodeSpec         a semantic role with a typed contract — and no implementation
+    StepSpec         a semantic role with a typed contract — and no implementation
+    NodeSpec         StepSpec | JoinSpec | DecisionSpec — every box a design declares
     EdgeSpec         source -> target, carrying one named variable
     JoinSpec         the one node kind that COMBINES several arrivals; no implementation to bind
     DecisionSpec     routes on the TYPE of the value; its branches are edges carrying `when=`
     MapEdgeSpec        fan out: the target runs once per item of the collection
     TransformEdgeSpec  a cheap synchronous reshape ON THE WIRE — no node, still declared
     SubgraphBinding  a whole child design, used as ONE node's implementation
-    StrategySpec     a complete NodeSpec -> implementation mapping
+    StrategySpec     a complete StepSpec -> implementation mapping
 
 Nothing here imports `pydantic_graph`. A design must be readable, diffable and checkable without
 an engine in the room; the engine appears only in `GraphSpec.render()`.
@@ -22,10 +23,10 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from workflow_workbench.graph_spec import GraphSpec
 
-__all__ = ["SpecError", "VariableSpec", "NodeSpec", "EdgeSpec", "MapEdgeSpec",
+__all__ = ["SpecError", "VariableSpec", "StepSpec", "EdgeSpec", "MapEdgeSpec",
            "TransformEdgeSpec",
            "JoinSpec", "DecisionSpec", "SubgraphBinding", "StrategySpec", "START", "END",
-           "Endpoint", "is_sentinel"]
+           "NodeSpec", "Bindable", "is_sentinel"]
 
 
 class _Unset:
@@ -66,10 +67,6 @@ class _End:
 START = _Start()
 END = _End()
 
-#: Anything an edge may connect. Narrows properly because the sentinels are real classes.
-Endpoint = "NodeSpec | _Start | _End"
-
-
 def is_sentinel(x: Any) -> bool:
     return isinstance(x, (_Start, _End))
 
@@ -87,7 +84,7 @@ class VariableSpec:
     A verifier should consume `candidate_facts`. Type checking cannot tell you it was wired to
     `rejected_facts`, because both are `list[Fact]`. A NAME can.
 
-    ⚠️ Value equality (unlike `NodeSpec`): two variables with the same name and type ARE the same
+    ⚠️ Value equality (unlike `StepSpec`): two variables with the same name and type ARE the same
     variable, wherever they were written.
     """
 
@@ -103,7 +100,7 @@ class VariableSpec:
 
 
 @dataclass(frozen=True, eq=False)
-class NodeSpec:
+class StepSpec:
     """A semantic role with a typed contract. Deliberately implementation-free.
 
     ⛔ FOR A FUTURE AGENT: a `pydantic_graph.BaseNode` IS NOT THIS, and wrapping one here is a
@@ -121,16 +118,16 @@ class NodeSpec:
         dispatch     return a discriminating TYPE and branch on it with `when=`
 
     What is lost is the authoring style, plus one converter node wherever two paths reach the
-    same step carrying different variables — a NodeSpec cannot declare "either of these". See
+    same step carrying different variables — a StepSpec cannot declare "either of these". See
     `parity.py`.
 
     ## ⚠️ `eq=False` is load-bearing, not a style choice
 
-    A `StrategySpec` keys its bindings on `NodeSpec`, so a NodeSpec is used as an IDENTITY. With
+    A `StrategySpec` keys its bindings on `StepSpec`, so a StepSpec is used as an IDENTITY. With
     the default value-equality of a frozen dataclass, two field-identical declarations collide:
 
-        norm_a = NodeSpec("normalize", (text,), (text,))
-        norm_b = NodeSpec("normalize", (text,), (text,))     # a copy/paste, or two designs
+        norm_a = StepSpec("normalize", (text,), (text,))
+        norm_b = StepSpec("normalize", (text,), (text,))     # a copy/paste, or two designs
 
         StrategySpec("s", {norm_a: impl_a, norm_b: impl_b})      # len(bindings) == 1
 
@@ -141,7 +138,7 @@ class NodeSpec:
     `eq=False` restores identity semantics: each declaration is its own key, hashed by `id`.
     Verified in `docs/probe_api.py` probe 4.
 
-    ⚠️ The cost: two NodeSpecs with the same NAME are now distinct keys, and `render()` uses
+    ⚠️ The cost: two StepSpecs with the same NAME are now distinct keys, and `render()` uses
     `name` as the graph's node id. `check_names` therefore exists.
     """
 
@@ -151,18 +148,18 @@ class NodeSpec:
     streams: bool = False
     """This role is filled by an async GENERATOR, built with `g.stream` rather than `g.step`.
 
-    ⚠️ Still a NodeSpec, not a StreamSpec — unlike a join or a decision, a stream IS a role a
+    ⚠️ Still a StepSpec, not a StreamSpec — unlike a join or a decision, a stream IS a role a
     strategy fills, and it has exactly one implementation per arm. Giving it its own type would
     have split `nodes` into two kinds for no gain and made "a node is a role a strategy fills"
     false of one of them."""
 
     def __post_init__(self) -> None:
         if not self.name:
-            raise SpecError("a NodeSpec needs a name — it becomes the node id in the graph")
+            raise SpecError("a StepSpec needs a name — it becomes the node id in the graph")
         for side, vs in (("inputs", self.inputs), ("outputs", self.outputs)):
             if isinstance(vs, list):
                 raise SpecError(
-                    f"{self.name}.{side} is a list. It must be a tuple: a NodeSpec is hashed as a "
+                    f"{self.name}.{side} is a list. It must be a tuple: a StepSpec is hashed as a "
                     f"StrategySpec key, and a list field makes the whole declaration unhashable.")
             names = [v.name for v in vs]
             if len(names) != len(set(names)):
@@ -171,7 +168,7 @@ class NodeSpec:
                     f"Two variables with one name cannot be told apart by anything downstream.")
 
     def __repr__(self) -> str:
-        return (f"NodeSpec({self.name!r}, "
+        return (f"StepSpec({self.name!r}, "
                 f"({', '.join(str(v) for v in self.inputs)}) -> "
                 f"({', '.join(str(v) for v in self.outputs)}))")
 
@@ -215,13 +212,13 @@ class EdgeSpec:
     ⚠️ A `transform=` field WAS refused on that same argument, and the argument was wrong. See
     `TransformEdgeSpec`: a reshape on the wire keeps every property that mattered — bound by a
     strategy, reported by `varies()`, checked against `delivers` — while emitting no node. What
-    was actually wrong was insisting it be a NodeSpec, which puts a box on the canvas for
+    was actually wrong was insisting it be a StepSpec, which puts a box on the canvas for
     something that is not a stage. Recorded because the shape of the mistake generalises: an
     invariant I had written ("strategies bind nodes") was defended as though it were a law.
     """
 
-    source: Any                       # NodeSpec | DecisionSpec | _Start
-    target: Any                       # NodeSpec | JoinSpec | DecisionSpec | _End
+    source: Any                       # StepSpec | DecisionSpec | _Start
+    target: Any                       # StepSpec | JoinSpec | DecisionSpec | _End
     carries: VariableSpec
 
     # ⚠️ KEYWORD-ONLY, every field. Four slots that look interchangeable: `source` and `target`
@@ -293,7 +290,7 @@ class MapEdgeSpec(EdgeSpec):
         item     = VariableSpec("item", str)         # "milk"
         cost     = VariableSpec("cost", float)
 
-        price = NodeSpec("price", inputs=(item,), outputs=(cost,))   # ONE item -> ONE price
+        price = StepSpec("price", inputs=(item,), outputs=(cost,))   # ONE item -> ONE price
         total = JoinSpec("total", reduce_sum, initial=0.0,
                          inputs=(cost,), outputs=(bill,))
 
@@ -343,7 +340,7 @@ class TransformEdgeSpec(EdgeSpec):
     one sync callable. pydantic-graph builds this with `.transform()` and emits NO node for it —
     so the diagram draws it as a tag on the arrow, not as a stage.
 
-    ## Why an edge and not a NodeSpec
+    ## Why an edge and not a StepSpec
 
     Because it is not a stage, and drawing it as one misleads. A workflow diagram a clinician
     reads should show the work, and `graph.edges` is not work — it is an accessor. But it is also
@@ -412,7 +409,7 @@ class JoinSpec:
         squares = JoinSpec("squares", reduce_list_append, initial_factory=list,
                            inputs=(square,), outputs=(all_squares,))
 
-    ⚠️ A join is NOT a `NodeSpec` and lives in `GraphSpec.joins`, not `nodes`. It has no
+    ⚠️ A join is NOT a `StepSpec` and lives in `GraphSpec.joins`, not `nodes`. It has no
     implementation, so a `StrategySpec` has nothing to bind for it and `varies()` can never report
     it. Putting it in `nodes` would make "a node is a role a strategy fills" false, and every
     caller of `nodes` would need to ask what kind of thing it just got.
@@ -422,7 +419,7 @@ class JoinSpec:
     join could only be reached by overriding that method, which turns reachability checking off
     for the entire design.
 
-    `eq=False` for the same reason as `NodeSpec`: identity, not field equality, so two
+    `eq=False` for the same reason as `StepSpec`: identity, not field equality, so two
     field-identical declarations stay two distinct joins.
     """
 
@@ -492,11 +489,31 @@ class DecisionSpec:
         return f"DecisionSpec({self.name!r}{note})"
 
 
+#: Every box a design DECLARES. The word matches Pydantic Graph, whose `graph.nodes` holds
+#: `['__end__', '__start__', 'compose', 'normalize']` — for them a node is any vertex and a step
+#: is one KIND of node. `workflow_workbench.payload.Node` already agreed (`kind: str = "step"`);
+#: only this module did not, because `NodeSpec` named the general thing and meant the specific one.
+#:
+#: ⛔ RENAMED IN 0.2.0. `NodeSpec` was the class you instantiate; it is now `StepSpec`, and this
+#: name is the union. See `docs/migration-0.2.md` — every annotation reading
+#: `tuple[NodeSpec, ...]` that was handed joins and decisions was a FALSE annotation, and is now
+#: true as written.
+NodeSpec = StepSpec | JoinSpec | DecisionSpec
+
+#: Anything a strategy binds an implementation to. The word is already the codebase's —
+#: `GraphSpec._bindables()`, `check_bindings(bindables=…)`, `_bindable_name()`.
+#:
+#: ⚠️ NOT just `StepSpec`. A `TransformEdgeSpec` with no `apply=` is a variation point declared in
+#: `edges`, and every strategy binds it — `docs/parity.md`'s `transform` row shows exactly that
+#: form. Annotating the mapping as steps-only made a consumer's type checker reject it.
+Bindable = StepSpec | TransformEdgeSpec
+
+
 @dataclass(frozen=True)
 class SubgraphBinding:
     """A whole child design — `GraphSpec` + `StrategySpec` — used as ONE node's implementation.
 
-    The parent still sees one `NodeSpec` with one node id. Internally that role is filled by
+    The parent still sees one `StepSpec` with one node id. Internally that role is filled by
     another checked design, which stays independently runnable, checkable and diagrammable.
 
         fancy = StrategySpec("fancy", {extract: SubgraphBinding(VerifiedExtraction(), verified)})
@@ -526,7 +543,7 @@ class SubgraphBinding:
 
 @dataclass(frozen=True)
 class StrategySpec:
-    """A complete NodeSpec -> implementation mapping. One competitor.
+    """A complete Bindable -> implementation mapping. One competitor.
 
     Every node is bound explicitly, including the ones that did not change. Inheritance and
     partial overrides are deliberately absent: a partial strategy makes "what varies between these
@@ -547,13 +564,13 @@ class StrategySpec:
     """
 
     name: str
-    bindings: Mapping[NodeSpec, Callable[..., Any] | SubgraphBinding] = field(default_factory=dict)
+    bindings: Mapping[Bindable, Callable[..., Any] | SubgraphBinding] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.name:
             raise SpecError("a StrategySpec needs a name — it is what its numbers are filed under")
 
-    def __getitem__(self, node: NodeSpec) -> Callable[..., Any] | SubgraphBinding:
+    def __getitem__(self, node: Bindable) -> Callable[..., Any] | SubgraphBinding:
         return self.bindings[node]
 
     def __repr__(self) -> str:

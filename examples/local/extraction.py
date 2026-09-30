@@ -14,7 +14,7 @@ from workflow_workbench import (
     START,
     EdgeSpec,
     GraphSpec,
-    NodeSpec,
+    StepSpec,
     SpecError,
     StrategySpec,
     VariableSpec,
@@ -32,9 +32,9 @@ candidate_facts = VariableSpec("candidate_facts", list[Fact])
 rejected_facts = VariableSpec("rejected_facts", list[Fact])
 kept_facts = VariableSpec("kept_facts", list[Fact])
 
-extract = NodeSpec("extract", inputs=(source_text,),
+extract = StepSpec("extract", inputs=(source_text,),
                    outputs=(candidate_facts, rejected_facts))
-verify = NodeSpec("verify", inputs=(candidate_facts,), outputs=(kept_facts,))
+verify = StepSpec("verify", inputs=(candidate_facts,), outputs=(kept_facts,))
 
 
 class Extraction(GraphSpec):

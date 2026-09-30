@@ -120,7 +120,7 @@ def _p3():
 @probe("4. eq=False nodes + sentinel classes as dict keys")
 def _p4():
     @dataclass(frozen=True, eq=False)
-    class NodeSpec:
+    class StepSpec:
         name: str
 
     class _Start:
@@ -130,7 +130,7 @@ def _p4():
         pass
 
     START, END = _Start(), _End()
-    a1, a2 = NodeSpec("same"), NodeSpec("same")     # field-identical, must NOT collide
+    a1, a2 = StepSpec("same"), StepSpec("same")     # field-identical, must NOT collide
     d = {a1: "first", a2: "second", START: "start", END: "end"}
     assert len(d) == 4, f"collided: {len(d)}"
     assert d[a1] == "first" and d[a2] == "second"

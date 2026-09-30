@@ -1,477 +1,277 @@
 # workflow-workbench
 
-Define one Pydantic graph design, bind competing strategies, then check, diagram, and evaluate
-them fairly.
+Workflow Workbench is a high-level wrapper around Pydantic Graph Builder for developing workflows
+with an AI coding agent.
+
+Specify the workflow and its data contracts, inspect its diagram, then have the agent implement
+the steps. Bind alternative implementations as strategies and compare them through simple
+evaluation battles.
+
+The specification keeps the workflow understandable and gives the agent explicit constraints.
+Pydantic Graph executes the workflow; Pydantic Evals evaluates its results.
 
 Built on [Pydantic Graph](https://ai.pydantic.dev/graph/) and
 [Pydantic Evals](https://ai.pydantic.dev/evals/). Independent; not affiliated with Pydantic.
 
-A workbench, not a designer: **you author in Python, and this is where you look at what you
-wrote.** Nothing here edits a graph — the view is read-only, by construction. It accommodates the
-design, the checks, the visualization, the strategy comparison and the eval battles in one place.
+## What it looks like
 
-```python
-seed  = VariableSpec("seed", int)
-count = VariableSpec("count", int)
+One workflow — normalize a name, then compose a greeting from it:
 
-increment = NodeSpec("increment", inputs=(seed,),  outputs=(count,))
-double_it = NodeSpec("double_it", inputs=(count,), outputs=(count,))
-
-class Counter(GraphSpec):
-    name = "counter"
-    state_type, input_type, output_type = CounterState, int, int
-    nodes = (increment, double_it)
-    edges = (EdgeSpec(source=START,     target=increment, carries=seed),
-             EdgeSpec(source=increment, target=double_it, carries=count),
-             EdgeSpec(source=double_it, target=END,       carries=count))
-
-modest     = StrategySpec("modest",     {increment: add_one,  double_it: times_two})
-aggressive = StrategySpec("aggressive", {increment: add_ten,  double_it: times_three})
-
-Counter().check()                        # no strategy, no implementations, no engine needed
-graph = Counter().render(modest)         # a real pydantic_graph.Graph
-eval_battle(Counter(), modest, aggressive, dataset)
-```
-
-Every field of an edge is keyword-only, and `carries` is required — four slots that look
-interchangeable is one transposition away from a graph that is wrong and still runs. The whole
-file is [`examples/counter.py`](examples/counter.py), and it is executed by the test suite.
-
-## The ladder — start with what you already have
-
-Every rung is a variation of an example from
-[Pydantic Graph's builder docs](https://pydantic.dev/docs/ai/graph/builder/), a module in
-`examples/ladder/`, and a test in `tests/test_ladder.py`. Read them in order; each adds exactly
-one capability.
-
-**Rung 0 is Pydantic Graph alone, and it is fine.** This is their `visualize_graph.py` shape —
-two steps, the second formatting the first's output:
-
-```python
-g = GraphBuilder(state_type=Guest, input_type=str, output_type=str)
-
-@g.step
-async def pick(ctx: StepContext[Guest, None, str]) -> str:
-    ctx.state.name = ctx.inputs
-    return "Hello"
-
-@g.step
-async def compose(ctx: StepContext[Guest, None, str]) -> str:
-    return f"{ctx.inputs}, {ctx.state.name}!"
-
-g.add(g.edge_from(g.start_node).to(pick),
-      g.edge_from(pick).to(compose),
-      g.edge_from(compose).to(g.end_node))
-```
-
-The same thing declared, on rung 1. The topology stops being calls and becomes data:
-
-```python
-name_in    = VariableSpec("name_in", str)
-salutation = VariableSpec("salutation", str)
-greeting   = VariableSpec("greeting", str)
-
-pick    = NodeSpec("pick",    inputs=(name_in,),    outputs=(salutation,))
-compose = NodeSpec("compose", inputs=(salutation,), outputs=(greeting,))
-
-class HelloWorld(GraphSpec):
-    name = "hello_world"
-    state_type = Guest
-    input_type, output_type = str, str
-    nodes = (pick, compose)
-    edges = (EdgeSpec(source=START,   target=pick,    carries=name_in),
-             EdgeSpec(source=pick,    target=compose, carries=salutation),
-             EdgeSpec(source=compose, target=END,     carries=greeting))
-```
-
-Both print `'Hello, Ada!'` and both have the node ids `pick`, `compose`. **On this rung that is a
-lateral move** — more code, same result — and the README will not pretend otherwise. It starts
-paying on rung 2, when `pick` has two implementations and something has to hold them to one shape.
-
-| rung | adds | source |
+| step | input | output |
 |---|---|---|
-| 0 | nothing — Pydantic Graph alone, the control | [`their_hello.py`](examples/ladder/their_hello.py) |
-| 1 | the design as data; `check()` and `diagram()` with nothing implemented | [`stage1_bare.py`](examples/ladder/stage1_bare.py) |
-| 2 | **two strategies over one design**, with identical node ids | [`stage2_strategies.py`](examples/ladder/stage2_strategies.py) |
-| 3 | a new node — and a strategy that predates it is refused | [`stage3_new_node.py`](examples/ladder/stage3_new_node.py) |
-| 4 | one node implemented by a **whole child design** | [`stage4_subgraph.py`](examples/ladder/stage4_subgraph.py) |
-| 5 | a **battle** — both arms scored on the same cases, against a noise floor | [`stage5_battle.py`](examples/ladder/stage5_battle.py) |
-| 6 | the **diff diagram** neither library can draw | [`stage6_diagrams.py`](examples/ladder/stage6_diagrams.py) |
-| 7 | proof it is a real `Graph` — their `iter()` drives it unchanged | [`stage7_iter.py`](examples/ladder/stage7_iter.py) |
-| 8 | **a declared join** — two producers into one consumer, combined rather than dropped | [`stage8_join.py`](examples/ladder/stage8_join.py) |
-| 9 | **conditional routing** — branches on the type of the answer, converging again | [`stage9_decision.py`](examples/ladder/stage9_decision.py) |
-| 10 | **the three things people reach for `BaseNode` to do** — stop early, go back, dispatch — declared | [`stage10_no_basenode.py`](examples/ladder/stage10_no_basenode.py) |
+| `normalize` | raw name, `str` | normalized name, `str` |
+| `compose` | normalized name, `str` | greeting, `str` |
 
-```bash
-uv run python3 -m examples.ladder.stage2_strategies    # any rung
-uv run pytest tests/test_ladder.py -q                  # all of them, asserted
+Desired behaviour: preserve the name's words, trim surrounding whitespace, collapse repeated
+internal whitespace, return `Hello, {name}!`.
+
+Two strategies disagree about how much of that `normalize` does. `compose` is the same function
+in both, so the comparison diagram highlights the one node that varies:
+
+```mermaid
+flowchart TD
+  START([START])
+  normalize["normalize<br/>trim_only: <i>trim</i><br/>normalize_spaces: <i>trim_and_collapse</i>"]:::varies
+  compose["compose<br/><i>compose_greeting</i>"]:::shared
+  END([END])
+  START -- raw_name --> normalize
+  normalize -- clean_name --> compose
+  compose -- greeting --> END
+  classDef varies fill:#fde68a,stroke:#b45309,stroke-width:3px;
+  classDef shared fill:#f1f5f9,stroke:#94a3b8;
 ```
 
-## Intent, implementation, execution
+Both satisfy the same declared types and structure, and every check passes for both. Only the
+evaluation separates them:
 
-| Layer | Question |
+| case | input | `trim_only` | `normalize_spaces` |
+|---|---|---|---|
+| `padded` | `"  Ada Lovelace  "` | `Hello, Ada Lovelace!` | `Hello, Ada Lovelace!` |
+| `inner_run` | `"Ada   Lovelace"` | ✗ `Hello, Ada   Lovelace!` | `Hello, Ada Lovelace!` |
+| `both` | `"  Grace   Hopper  "` | ✗ `Hello, Grace   Hopper!` | `Hello, Grace Hopper!` |
+| `already_clean` | `"Alan Turing"` | `Hello, Alan Turing!` | `Hello, Alan Turing!` |
+| | **exact-match score** | **0.50** | **1.00** |
+
+A **battle** runs both strategies over the same cases with the same evaluators — here exact
+matching against the expected greeting. `0.50` is two of four: a result on this four-case
+demonstration dataset and nothing beyond it.
+
+`eval_battle` also scores one strategy against itself; that replicate is the noise floor a real
+delta has to clear. It is `0.00` here because both implementations are deterministic — a `0.00`
+floor on a model-backed arm usually means a cache answered the second run.
+
+The whole example: [`examples/greeting.py`](examples/greeting.py).
+
+## Quickstart
+
+Python 3.12 or newer, and [uv](https://docs.astral.sh/uv/). No API keys: the example is pure
+string handling and calls no model.
+
+```bash
+git clone https://github.com/borisdev/workflow-workbench
+cd workflow-workbench
+uv sync --no-dev --extra evals
+uv run python3 -m examples.greeting
+```
+
+Everything it produces goes to the terminal; no files are written. Excerpt:
+
+```
+1. check() with nothing implemented: clean
+...
+3. what varies between the two strategies: {'normalize': ('trim', 'trim_and_collapse')}
+...
+   case           input                  trim_only                  normalize_spaces
+   inner_run      'Ada   Lovelace'       'Hello, Ada   Lovelace!'   'Hello, Ada Lovelace!'
+...
+   noise floor (same strategy twice): {'ExactMatch': 0.0}
+   trim_only        0.50
+   normalize_spaces 1.00
+```
+
+Two mermaid blocks go past on the way: the specification, and the comparison above. A browser
+viewer is available as a separate process — `uv run python3 -m workflow_workbench.cli serve`, see
+[`serve.py`](workflow_workbench/serve.py) — and nothing in the quickstart needs it.
+
+## The development sequence
+
+| | step | what you can inspect |
+|---|---|---|
+| 1 | specify the workflow | the nodes, named values and edges, as data |
+| 2 | check and draw it | `check()` findings and `diagram()` mermaid, with nothing implemented |
+| 3 | implement the steps | ordinary Pydantic Graph step bodies |
+| 4 | bind a named strategy | `diagram(strategy)` — the design with each role's implementation named |
+| 5 | check the strategy | missing bindings, wrong return types, and `render()` refusing outright |
+| 6 | execute and evaluate | outputs per case, scores, `varies()` and `diff_diagram()` |
+
+Stages 2 and 5 are what a specification buys, and neither needs a second strategy: one
+implementation per step still gets a drawing before it is written and a refusal when one is
+missed.
+
+## The same example, in five stages
+
+### 1. Declare the nodes, the named values, and the edges
+
+```python
+raw_name = VariableSpec("raw_name", str)
+clean_name = VariableSpec("clean_name", str)
+greeting = VariableSpec("greeting", str)
+
+normalize = StepSpec("normalize", inputs=(raw_name,), outputs=(clean_name,))
+compose = StepSpec("compose", inputs=(clean_name,), outputs=(greeting,))
+
+class Greeting(GraphSpec):
+    name = "greeting"
+    input_type, output_type = str, str
+    nodes = (normalize, compose)
+    edges = (EdgeSpec(source=START, target=normalize, carries=raw_name),
+             EdgeSpec(source=normalize, target=compose, carries=clean_name),
+             EdgeSpec(source=compose, target=END, carries=greeting))
+```
+
+`clean_name` and `greeting` are both `str`, which is why they are separate variables: no type
+checker can catch `compose` being wired to the wrong one when there is only one type in the room.
+A name can. Edge fields are keyword-only and `carries` is required — four interchangeable-looking
+slots are one transposition away from a graph that is wrong and runs.
+
+### 2. Check it and draw it, before implementing anything
+
+```python
+spec = Greeting()
+spec.check()      # -> [] — no strategy, no implementations, no engine
+spec.diagram()    # -> mermaid for the specification
+```
+
+This is the stage a built `Graph` cannot reach: a `Graph` needs every function to exist first.
+
+### 3. Implement the steps, then bind them as named strategies
+
+The step bodies are ordinary Pydantic Graph steps — nothing in them refers to this library:
+
+```python
+async def trim(ctx) -> str:
+    return ctx.inputs.strip()
+
+async def trim_and_collapse(ctx) -> str:
+    return " ".join(ctx.inputs.split())
+
+async def compose_greeting(ctx) -> str:
+    return f"Hello, {ctx.inputs}!"
+
+trim_only = StrategySpec("trim_only", {normalize: trim, compose: compose_greeting})
+normalize_spaces = StrategySpec("normalize_spaces",
+                                {normalize: trim_and_collapse, compose: compose_greeting})
+```
+
+### 4. An incomplete strategy is refused at declaration time
+
+A strategy binds **every** node, including ones it does not change. Leave one out and the check
+says so; `render()` refuses rather than building a graph with a hole in it:
+
+```python
+unfinished = StrategySpec("unfinished", {normalize: trim_and_collapse})
+spec.check(unfinished)
+# ["strategy 'unfinished' does not bind node 'compose'. Every one is bound explicitly,
+#   including unchanged ones — a partial strategy makes 'what varies between these arms'
+#   unanswerable without reading both files."]
+spec.render(unfinished)   # raises SpecError with the same finding
+```
+
+Which is what makes growing a workflow safe: add a node and every existing strategy fails loudly
+rather than skipping a step it never heard of
+([`stage3_new_node.py`](examples/ladder/stage3_new_node.py)).
+
+### 5. Construct the graphs and evaluate both strategies
+
+`spec.diagram()` draws the specification; `spec.render(strategy)` constructs a real
+`pydantic_graph.Graph` — their object, their executor, their `iter()`:
+
+```python
+graph = spec.render(normalize_spaces)
+graph.run_sync(inputs="  Ada   Lovelace  ")      # 'Hello, Ada Lovelace!'
+
+floor = eval_battle(spec, trim_only, trim_only, dataset())          # the noise floor
+battle = eval_battle(spec, trim_only, normalize_spaces, dataset())  # the comparison
+```
+
+`eval_battle` takes one `spec` and two strategies, so both arms render from the same nodes, edges
+and types. There is nowhere to put a second design.
+
+## What the checks guarantee, and what they do not
+
+The specification supplies the structure and the data contracts; a strategy supplies
+implementations; `render()` constructs the graph from those declarations. There is no second,
+separately maintained wiring definition to drift from them — `edges` is the only way a graph gets
+wired, with no hook and no override, so a strategy can change what a node *does* and cannot change
+what the workflow *is*.
+
+What the checks in [`checks.py`](workflow_workbench/checks.py) detect:
+
+| check | catches |
 |---|---|
-| Problem | What outcome is needed? |
-| Specification | What must a valid workflow contain and guarantee? |
-| Implementation | How does each node fulfil its role? |
-| Execution | How does Pydantic Graph run it? |
+| `check_names` | two nodes with one name — they become one graph node id |
+| `check_reachable` | a node unreachable from `START`, or unable to reach `END` |
+| `check_variables` | an edge carrying a value its source does not produce or its target does not take |
+| `check_step_arity` | two unconditional arrivals into one step: it runs twice and one result is dropped |
+| `check_bindings` | a strategy binding too few nodes, or one the design does not declare |
+| `check_implementations` | a binding that is not callable, or does not take exactly one `ctx` |
+| `check_variable_types` | a return annotation that does not satisfy the role's declared output |
+| `check_decisions` | a branch condition anywhere but on an edge leaving a decision |
+| `check_fan_out_rejoins` | fan-out items reaching `END` without passing a join |
+| `check_subgraphs` | a child design that does not fit the node it fills, or is bound inside itself |
 
-`GraphSpec` is the inspectable design. `StrategySpec` binds it to native Pydantic Graph step
-implementations. Execution stays Pydantic Graph's.
+All of that is **structural**. None of it says the workflow produces good answers: `trim_only`
+passes every one of those and gets half the cases wrong. Structural consistency is what a
+specification guarantees; behaviour is what the battle is for.
 
-## One node role, a step or a whole subgraph
+### Working with a coding agent
 
-A `NodeSpec` keeps a role's identity and typed boundary stable. A strategy fills it with one
-callable:
+The specification is the reviewable artifact. Review the diagram and the contracts, and the
+agent's job narrows to step bodies satisfying a declared input and output type for a named role,
+with `check()` as the acceptance test.
 
-```python
-better = StrategySpec("better", {extract: better_extract})
-```
+A proposed change to the workflow itself is then a diff to `nodes` and `edges` — one small place,
+reviewed on its own, not a behaviour change buried in a function body.
 
-…or with a complete child design:
+## Current limitations
 
-```python
-fancy = StrategySpec("fancy", {extract: SubgraphBinding(VerifiedExtraction(), verified)})
-```
+- **The `BaseNode` authoring style cannot be declared.** It returns its own successor, so
+  declared `edges` would be a claim it is free to ignore. Everything a `BaseNode` is used *for* —
+  stop early, go back, dispatch — is declarable
+  ([`stage10_no_basenode.py`](examples/ladder/stage10_no_basenode.py)).
+- **Predicate branches are refused**, not missing: a callable in the specification cannot be drawn
+  and two cannot be compared. Return a discriminating type from a step instead.
+- **`map` and `transform` do not compose on one edge**, and `join` does not expose fork selection.
+- For any of these, take the `Graph` that `render()` returns and use their API directly.
 
-The child must match the node's input/output contract and share the parent's exact `state_type`
-and `deps_type` — it runs on the parent's actual objects. It stays independently runnable and
-checkable, and the parent keeps **one** node id either way, which is what a battle aligns on.
-Where a node is wired straight to `START`/`END` and declares no variable, the graph's own
-`input_type`/`output_type` is what the child is checked against.
+Row by row, with their code beside ours: [`docs/parity.md`](docs/parity.md).
 
-See [`examples/subgraph.py`](examples/subgraph.py) for the `naive` / `better` / `fancy` comparison.
+## More
 
-## Do not use this library if…
+| | |
+|---|---|
+| [`docs/ladder.md`](docs/ladder.md) | eleven rungs, each adding one capability — subgraphs, joins, decisions, fan-out |
+| [`docs/design.md`](docs/design.md) | why the pieces are shaped this way, and what this library does not own |
+| [`docs/parity.md`](docs/parity.md) | every Pydantic Graph builder feature, declarable or not |
+| [`docs/how-it-runs.md`](docs/how-it-runs.md) | their executor from the source, with a probe behind every claim |
+| [`examples/greeting.py`](examples/greeting.py) | the walkthrough above; beside it a counter, a fan-out, subgraphs, extraction |
 
-- you have **one** graph with one implementation per node → use **Pydantic Graph** directly
-- you only need to evaluate **one** callable → use **Pydantic Evals** directly
+Downstream of community requests for
+[reusable/extensible nodes](https://github.com/pydantic/pydantic-ai/issues/798) and
+[reusable subgraphs](https://github.com/pydantic/pydantic-ai/issues/3901) — complementary to
+native Pydantic Graph, not a proposal to change it.
 
-Use this only when several strategies must satisfy the same graph structure and typed contracts
-before being compared.
+## Licence
 
-## What the declaration can express — enumerated, not remembered
-
-`docs/probe_builder_features.py` runs every `GraphBuilder` feature, then asks which a `GraphSpec`
-can declare as DATA — the only form `check()` and `diagram()` can read.
-
-**10 fully declarable, 1 partial, 1 that cannot be.** The row-by-row version — every feature with
-their code beside ours — is the [appendix](#appendix-every-pydantic-graph-builder-feature-theirs-beside-ours)
-at the foot of this file, generated from `workflow_workbench/parity.py`.
-
-⛔ This used to be a second table, written by hand, and it went stale the moment `map_over` became
-`MapEdgeSpec` — while the generated one below stayed correct. Two descriptions of one thing is the
-drift `.claude/rules/spec-as-code.md` exists to prevent, and it caught this repo twice: once when
-the probe kept its own copy, once here.
-
-⛔ **And there is no escape hatch.** `edges` is the only way a graph gets wired — no override, no
-hook. There used to be one, and it was the single thing that could make a built graph disagree
-with its declaration: `edges` became decorative, `diagram()` could draw a picture the graph did
-not match, and reachability was reported unchecked for the whole design.
-
-So if you need a predicate branch or the `BaseNode` API: **`render()` hands you a
-real `pydantic_graph.Graph` — take it and use their API directly.** A workbench that can express
-everything is the engine with extra steps.
-
-⛔ **The matrix is checked against the real API, not maintained by hand.** An earlier version was
-written from a grep and missed five entries — `stream`, `node`, `match_node`, `add_mapping_edge`,
-and `match(matches=...)` — while reading as a complete inventory of the gaps. The probe now
-introspects `GraphBuilder` and fails if any public method is unclassified, so the next thing
-Pydantic Graph ships turns it red instead of silently widening a gap we describe as closed.
-
-⚠️ `JoinSpec` and `DecisionSpec` live in `joins` and `decisions`, never in `nodes`. Neither has an
-implementation, so a strategy binds nothing for them — which keeps *"a node is a role a strategy
-fills"* true of every element of `nodes`, and guarantees two arms of a branching design route
-identically.
-
-## What it owns, and what it does not
-
-This library owns the design — `GraphSpec`, `NodeSpec`, `EdgeSpec`, `VariableSpec`,
-`StrategySpec` — plus the checks, the strategy diagrams, and `eval_battle`.
-
-Pydantic Evals owns `Case`, `Dataset`, `Evaluator`, `LLMJudge` and `EvaluationReport`; they are
-imported and used directly. There is no `EvalCase`, no `EvalSuite`, no `Grader`, no `EvalReport`,
-no `EvalHarness`.
-
-It is a **strategy layer over Pydantic Graph**, not a new general workflow framework.
-
-## The three things it adds
-
-Most workflow tools show one executable route. This one keeps the design fixed and shows which
-implementation choices vary between competing routes.
-
-**1. Node identity belongs to the DESIGN, not the implementation.** Without an explicit `node_id`,
-pydantic-graph names a node after the bound function — so two arms of one design get disjoint node
-sets and a comparison has nothing to align on. Measured both ways in `docs/probe_api.py`.
-
-**2. A per-edge variable check.** A node with two outputs of the same type can have its two
-outgoing edges swapped. Every set matches — produced == consumed — and the wiring is wrong. Only a
-per-edge check sees it; the test proves the set comparison agrees with the bug.
-
-**3. A diagram of what VARIES between two strategies.** Two arms of one design render
-byte-identical mermaid from `Graph.render()`, because a built graph retains no trace of the
-strategy that produced it. `diff_diagram()` reads the declaration instead.
-
-## Viewing a report
-
-`workflow_workbench.serve` is a stateless viewer: POST a report, GET a page. It renders with React
-Flow, or `?plain=1` for a self-contained page with no bundle at all.
-
-```bash
-export WORKFLOW_WORKBENCH_TOKEN=$(python3 -c 'import secrets;print(secrets.token_urlsafe(24))')
-python3 -m workflow_workbench.cli serve --host 0.0.0.0 --port 8800
-```
-
-⚠️ The renderer depends on the **schema** (`workflow_workbench/payload.py`, which imports only
-pydantic) and never on the **engine**. Hosting the viewer does not require pydantic-graph, so a
-report can be displayed somewhere that cannot build graphs.
-
-## How it actually runs
-
-[`docs/how-it-runs.md`](docs/how-it-runs.md) — Pydantic Graph's executor from the source: the task
-scheduler, the routing table, why `map` becomes a node at build time while `transform` stays on
-the wire and runs per completion, and why a fan-out needs a join. Then how a `GraphSpec` maps onto
-all of it, and the two places the mapping loses information.
-
-Most of it is not in their docs, so every claim on the page is printed by
-[`docs/probe_executor.py`](docs/probe_executor.py) and the probe is run by the test suite — a page
-about someone else's internals goes stale silently otherwise.
+MIT — see [LICENSE](LICENSE).
 
 ## Verify it rather than believe it
 
 ```bash
 uv run pytest -q
-uv run python3 docs/probe_api.py                  # every claim above, against the real library
-uv run python3 docs/probe_parallel_and_evals.py
-uv run python3 docs/probe_builder_features.py     # what the declaration can and cannot express
-uv run python3 docs/probe_executor.py             # every claim in docs/how-it-runs.md
-uv run python3 examples/counter.py
-uv run python3 examples/parallel.py
-uv run python3 examples/subgraph.py
-uv run pytest tests/test_ladder.py -q              # the README's ladder, every rung
-uv run python3 examples/local/extraction.py
+uv run python3 -m examples.greeting                 # the walkthrough above
+uv run python3 docs/probe_api.py                    # the node-identity claims, against the real library
+uv run python3 docs/probe_builder_features.py       # what the specification can and cannot express
+uv run python3 docs/probe_executor.py               # every claim in docs/how-it-runs.md
+uv run python3 -m workflow_workbench.parity --check  # docs/parity.md is generated, not written
 ```
-
-The browser tests run the page in Chromium at a phone viewport. They are non-vacuous by
-construction: one unbalanced brace in the renderer turns 12 of 13 red, and a corrupt island bundle
-turns 13 of 14 red while the `?plain=1` fallback keeps passing.
-
-## Related Pydantic Graph discussions
-
-A downstream design related to community requests for
-[reusable/extensible nodes](https://github.com/pydantic/pydantic-ai/issues/798) and
-[reusable subgraphs](https://github.com/pydantic/pydantic-ai/issues/3901). It is a complementary
-layer over native Pydantic Graph, not a proposal to change it.
-
-<!-- parity:start -->
-## Appendix: every Pydantic Graph builder feature, theirs beside ours
-
-<!-- GENERATED from workflow_workbench/parity.py — do not edit by hand. -->
-<!-- Regenerate: python3 -m workflow_workbench.parity -->
-
-### `step` — **yes**
-
-Pydantic Graph:
-
-```python
-@g.step
-async def double(ctx) -> int:
-    return ctx.inputs * 2
-```
-
-Workflow Workbench:
-
-```python
-double = NodeSpec("double", inputs=(n,), outputs=(n,))
-# and a strategy binds the body:
-StrategySpec("s", {double: double_impl})
-```
-
-> Theirs names the node after the function. Ours names it in the DESIGN, so two strategies produce the same node ids and can be compared.
-
-### `add / add_edge / label` — **yes**
-
-Pydantic Graph:
-
-```python
-g.add(g.edge_from(a).to(b))
-g.add_edge(a, b, label='count')
-```
-
-Workflow Workbench:
-
-```python
-EdgeSpec(source=a, target=b, carries=count)          # `carries` IS the label
-```
-
-### `join` — **yes**
-
-Pydantic Graph:
-
-```python
-collect = g.join(reduce_sum, initial=0)
-```
-
-Workflow Workbench:
-
-```python
-collect = JoinSpec("collect", reduce_sum, initial=0,
-                   inputs=(number,), outputs=(total,))
-class Design(GraphSpec):
-    joins = (collect,)
-```
-
-> In `joins`, not `nodes`: a reducer is `(current, input) -> current`, so there is no implementation for a strategy to bind. ⚠️ `parent_fork_id` and `preferred_parent_fork` are NOT exposed. They pick WHICH fork a join closes, which only matters once fan-outs nest — measured: map-over-papers then map-over-edges collects one flat list because the default is 'farthest'. Asking for 'closest' needs a fork id, and forks are minted by the builder and never named in a declaration.
-
-### `map / add_mapping_edge` — **yes**
-
-Pydantic Graph:
-
-```python
-g.edge_from(g.start_node).map().to(square)
-```
-
-Workflow Workbench:
-
-```python
-MapEdgeSpec(source=START, target=square, carries=numbers, delivers=number)
-```
-
-> `carries` is the collection on the wire, `delivers` the item the target receives. Naming both is what keeps both ends checked. ⚠️ NOT COMPOSABLE with a transform: theirs is a list of markers on one edge, so `.map().transform(f).to(b)` fans out AND reshapes each item; ours are separate types and no edge is both. Measured, not assumed.
-
-### `decision` — **yes**
-
-Pydantic Graph:
-
-```python
-d = g.decision()
-d = d.branch(g.match(Urgent).to(escalate))
-d = d.branch(g.match(Routine).to(research))
-```
-
-Workflow Workbench:
-
-```python
-route = DecisionSpec("route")
-EdgeSpec(source=route, target=escalate, carries=v, when=Urgent)
-EdgeSpec(source=route, target=research, carries=v, when=Routine)
-```
-
-> The condition lives on the EDGE so `edges` stays the only place topology is written. A decision binds nothing, so two arms are guaranteed to route identically.
-
-### `stream` — **yes**
-
-Pydantic Graph:
-
-```python
-@g.stream
-async def split(ctx):
-    for w in ctx.inputs.split():
-        yield w
-```
-
-Workflow Workbench:
-
-```python
-split = NodeSpec("split", inputs=(text,), outputs=(words,), streams=True)
-MapEdgeSpec(source=split, target=collect, carries=words, delivers=word)   # its output is an AsyncIterable
-```
-
-> A flag on NodeSpec, not its own type: a stream IS a role a strategy fills.
-
-### `broadcast` — **yes**
-
-Pydantic Graph:
-
-```python
-g.edge_from(a).broadcast(lambda eb: [eb.to(x), eb.to(y)])
-```
-
-Workflow Workbench:
-
-```python
-EdgeSpec(source=a, target=x, carries=v)
-EdgeSpec(source=a, target=y, carries=v)   # two edges from one source
-```
-
-> MEASURED equivalent: same topology, same answer. Only the generated fork node's name differs. No vocabulary was added for it.
-
-### `edge_from(*sources) / to(a, b)` — **yes**
-
-Pydantic Graph:
-
-```python
-g.edge_from(a, b).to(sink)
-```
-
-Workflow Workbench:
-
-```python
-EdgeSpec(source=a, target=sink, carries=v)
-EdgeSpec(source=b, target=sink, carries=v)
-```
-
-> MEASURED byte-identical. ⚠️ But two producers into one STEP is a real defect — the step runs once per edge and one result is discarded. Use a JoinSpec; `check_step_arity` refuses the other shape.
-
-### `match(matches=predicate)` — partial
-
-Pydantic Graph:
-
-```python
-d.branch(g.match(int, matches=lambda v: v > 10).to(big))
-```
-
-Workflow Workbench:
-
-```python
-# not declarable. Return a discriminating TYPE from a step instead:
-async def triage(ctx) -> Urgent | Routine: ...
-EdgeSpec(source=route, target=escalate, carries=v, when=Urgent)
-```
-
-> REFUSED, not missing. A callable in the declaration is an implementation: `diagram()` cannot draw it and `varies()` cannot compare two. Making the decision a typed value is the better design anyway — it becomes something you can see and battle.
-
-### `transform` — **yes**
-
-Pydantic Graph:
-
-```python
-g.edge_from(a).transform(lambda ctx: ctx.inputs.edges).to(b)
-```
-
-Workflow Workbench:
-
-```python
-# fixed — part of the design, like a JoinSpec's reducer:
-TransformEdgeSpec(source=propose, target=cite, carries=draft, delivers=edge_list, apply=take_edges)
-# or a variation point — every strategy binds it, and varies() reports it:
-shape = TransformEdgeSpec(source=propose, target=cite, carries=draft, delivers=edge_list)
-StrategySpec("all", {..., shape: all_edges})
-```
-
-> Emits NO node, exactly as theirs does, so the diagram tags the arrow rather than adding a box — a reshape is not a stage and drawing it as one misleads. `variable` is what leaves the source, `produces` what arrives. Exactly one of `apply=` or a binding: neither is a silently missing transform, both is a coin toss. Must be SYNC — an async one is not rejected by pydantic-graph, it quietly yields a coroutine.
-
-### `node(BaseNode) / match_node` — cannot be declared
-
-Pydantic Graph:
-
-```python
-class Increment(BaseNode[S, None, int]):
-    async def run(self, ctx) -> DoubleIt:       # names its OWN successor
-        return DoubleIt(...)
-```
-
-Workflow Workbench:
-
-```python
-# no equivalent for the CLASS. All three things it is used FOR are declarable:
-EdgeSpec(source=gate, target=END, carries=v, when=NotAPlan)      # 1. stop early  (their End(...))
-EdgeSpec(source=again, target=retry_seed, carries=v, when=Thin)  # 2. go back     (a loop)
-EdgeSpec(source=unwrap, target=propose, carries=seed)
-EdgeSpec(source=route, target=escalate, carries=v, when=Urgent)  # 3. dispatch    (pick a successor)
-```
-
-> A BaseNode's topology lives inside its implementation, so declared `edges` would be a lie it is free to ignore — two arms binding different BaseNodes could be two different graphs while `diff_diagram()` drew them as one. ⚠️ But what is lost is the AUTHORING STYLE, not the capability: `examples/ladder/stage10_no_basenode.py` does all three in one design. The real cost is porting an existing BaseNode app, and one converter node wherever two paths reach the same step carrying different variables.
-
-**Plumbing, not topology:** `build`, `start_node / end_node`, `Source / Destination` — `render()` and `START`/`END` cover these.
-<!-- parity:end -->

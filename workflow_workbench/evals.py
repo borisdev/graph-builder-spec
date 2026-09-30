@@ -121,6 +121,12 @@ def eval_battle(spec: GraphSpec, strategy_a: StrategySpec, strategy_b: StrategyS
                           is_replicate=strategy_a is strategy_b, run=run)
 
 
+def _named(fn: Any, name: str) -> Any:
+    """Give an arm's task callable the strategy's name, so the progress bar says which arm ran."""
+    fn.__name__ = name
+    return fn
+
+
 def _default_run(graph: Any, inputs: Any) -> Any:
     res = graph.run_sync(inputs=inputs)
     return getattr(res, "output", res)
@@ -136,11 +142,14 @@ def compare_graphs(graph_a: Any, graph_b: Any, dataset: Any, *, labels: tuple[st
     `eval_battle` unless you have graphs from somewhere else and accept that trade explicitly.
     """
     runner = run or _default_run
-    # ⚠️ `name=` per arm. Without it pydantic-evals labels the progress bar and the report from the
-    # task callable's `__name__` — and a replicate runs the SAME callable twice, so both arms would
-    # print under one name and be indistinguishable in the output.
-    report_a = dataset.evaluate_sync(lambda i: runner(graph_a, i), name=labels[0])
-    report_b = dataset.evaluate_sync(lambda i: runner(graph_b, i), name=labels[1])
+    # ⚠️ `name=` per arm AND `__name__` on the callable. `name=` labels the REPORT; the progress
+    # bar is drawn from the task callable's `__name__`, so a bare lambda prints `<lambda>` for
+    # both arms — and a replicate runs the same callable twice, which is exactly when telling the
+    # two apart matters most.
+    report_a = dataset.evaluate_sync(_named(lambda i: runner(graph_a, i), labels[0]),
+                                     name=labels[0])
+    report_b = dataset.evaluate_sync(_named(lambda i: runner(graph_b, i), labels[1]),
+                                     name=labels[1])
     return BattleResult(spec_name=spec_name, label_a=labels[0], label_b=labels[1],
                         report_a=report_a, report_b=report_b, is_replicate=is_replicate)
 
