@@ -46,7 +46,7 @@ class GraphSpec:
                      EdgeSpec(source=load, target=extract, carries=raw_text),
                      EdgeSpec(source=extract, target=END))
 
-    The DAG is DATA, not code — which is what lets `check()` and `diagram()` run with zero
+    The DAG is DATA, not code — which is what lets `coherence_check()` and `diagram()` run with zero
     implementations and no engine.
 
     ⛔ There is exactly ONE way a graph comes into existence here: `edges` is compiled by `_wire`.
@@ -85,7 +85,7 @@ class GraphSpec:
 
     # ── checking ────────────────────────────────────────────────────────────────────────────
 
-    def check(self, strategy: StrategySpec | None = None) -> list[CoherenceFinding]:
+    def coherence_check(self, strategy: StrategySpec | None = None) -> list[CoherenceFinding]:
         """Every applicable check, as findings. Never raises.
 
         With no strategy: the design's own coherence — names, reachability, variables. Usable the
@@ -96,18 +96,18 @@ class GraphSpec:
         ⚠️ One method, not two. There is no "check the design" / "check the strategy" split
         because the no-strategy case needs no placeholder graph — the declaration is already data.
 
-        Recursion into subgraph bindings lives in `_check`, so nested designs can carry an
+        Recursion into subgraph bindings lives in `_coherence_check`, so nested designs can carry an
         ancestry path without that bookkeeping showing up in the public signature.
 
         ⚠️ Each finding is a `CoherenceFinding` — still a `str`, and still the same sentence, with
         `check`, `about` and `blocking` on it so a caller can branch on structure instead of
-        matching on text. `checks.blocking(spec.check(s))` is the filter `render()` itself uses.
+        matching on text. `checks.blocking(spec.coherence_check(s))` is the filter `render()` itself uses.
         """
-        return self._check(strategy, ancestry=())
+        return self._coherence_check(strategy, ancestry=())
 
-    def _check(self, strategy: StrategySpec | None,
+    def _coherence_check(self, strategy: StrategySpec | None,
                *, ancestry: tuple[tuple[type, int], ...]) -> list[CoherenceFinding]:
-        """`check()`, plus the path of (design, strategy) pairs already open above this one.
+        """`coherence_check()`, plus the path of (design, strategy) pairs already open above this one.
 
         ⚠️ This is the ONE place a cycle is detected. `check_subgraphs` deliberately does not
         also check — two owners of one rule is how a chain ends up either reported twice or, worse,
@@ -119,7 +119,7 @@ class GraphSpec:
         """
         key = (type(self), id(strategy)) if strategy is not None else None
         if key is not None and key in ancestry:
-            # ⚠️ `check="GraphSpec._check"` names the producing function, like every other
+            # ⚠️ `check="GraphSpec._coherence_check"` names the producing function, like every other
             # finding — and here that is honestly not a `check_*` in `checks.py`. Cycle detection
             # needs the `ancestry` only this method carries, which is why it lives here and why
             # `check_subgraphs` deliberately does not also do it. `about` is the STRATEGY: the
@@ -129,7 +129,7 @@ class GraphSpec:
                 f"{strategy.name!r} appears inside its own subgraph chain. Rendering it would "
                 f"build child graphs until the stack ran out — a design cannot implement one of "
                 f"its own nodes with itself.",
-                check="GraphSpec._check", about=strategy.name)]
+                check="GraphSpec._coherence_check", about=strategy.name)]
 
         # ⚠️ `nodes` is STEPS ONLY — the roles a strategy fills. `NodeSpec` is every declared
         # box. Conflating the two is how a join ends up demanding an implementation, or an
@@ -291,7 +291,7 @@ class GraphSpec:
         built graph. Nothing else should compare two bare `Graph` objects — there is no way to tell
         whether they came from one design.
         """
-        findings = self.check(strategy)
+        findings = self.coherence_check(strategy)
         hard = blocking(findings)
         if hard:
             raise SpecError(

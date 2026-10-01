@@ -2,7 +2,7 @@
 
 Each returns a list of `CoherenceFinding` — sentences a human can act on, carrying the structure
 an agent would otherwise have to regex back out — and never raises. An empty list is a pass;
-`GraphSpec.check()` is what turns a non-empty list into an exception.
+`GraphSpec.coherence_check()` is what turns a non-empty list into an exception.
 
 ⚠️ Findings say what is wrong AND what it costs. "node 'x' is unreachable" is a fact; "…so its
 implementation never runs, and a strategy that binds it will look like it works" is a reason to
@@ -438,7 +438,7 @@ def check_subgraphs(parent: Any, strategy: StrategySpec,
         # ⚠️ NOT re-tagged. A child's findings already name the check that produced them and the
         # node inside the CHILD they are about; overwriting either with the parent's node would
         # replace a precise answer with a vaguer one.
-        findings += child._check(child_strategy, ancestry=ancestry)
+        findings += child._coherence_check(child_strategy, ancestry=ancestry)
 
     return findings
 
@@ -688,10 +688,10 @@ def check_variable_types(parent: Any, strategy: StrategySpec) -> list[CoherenceF
         wrong = StepSpec("wrong", inputs=(text,), outputs=(number,))   # declares int
         async def returns_a_string(ctx) -> str: ...                    # returns str
 
-        check() -> clean
+        coherence_check() -> clean
         run('x') -> "got 'not an int: x' (str)"
 
-    Nothing objected — not `check()`, not `build(validate_graph_structure=True)`, not the run.
+    Nothing objected — not `coherence_check()`, not `build(validate_graph_structure=True)`, not the run.
 
     ⚠️ And this gap is WORSE here than in raw pydantic-graph, which is the uncomfortable part.
     Their API never asks you to write the type down, so it promises nothing. This library invites
@@ -835,7 +835,7 @@ def check_fan_out_rejoins(nodes: tuple[NodeSpec, ...],
     ⛔ THE MIRROR OF `check_step_arity`, and it was missing. Measured on a three-item shopping
     list with `map -> price -> END` and no join:
 
-        check() -> clean
+        coherence_check() -> clean
         run     -> 1.2
         price ran 3 times, with ['milk', 'eggs', 'bread']
 

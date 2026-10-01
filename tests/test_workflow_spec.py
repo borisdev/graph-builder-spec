@@ -196,7 +196,7 @@ def test_varies_names_only_what_differs():
 
 
 def test_check_with_no_strategy_needs_no_implementations():
-    assert Linear().check() == []
+    assert Linear().coherence_check() == []
 
 
 # ── there is exactly one way to wire a graph ────────────────────────────────────────────────
@@ -219,7 +219,7 @@ def test_there_is_no_wiring_hook_to_override():
         def build_pydantic_structure(self, g, nodes):    # noqa: ARG002 — deliberately ignored
             raise AssertionError("this must never be called")
 
-    assert TriesToOverride().check(arm_a) == []
+    assert TriesToOverride().coherence_check(arm_a) == []
     assert TriesToOverride().render(arm_a).run_sync(inputs="hi") == "A:HI"
 
 
@@ -309,7 +309,7 @@ def test_blocking_agrees_with_the_comprehension_it_replaces():
     """`render()`, `eval_battle` and the devserver all used the same `startswith` comprehension.
     They call `blocking()` now, so the two must give the identical verdict on the same input —
     including on a PLAIN string a caller mixed in, which has no `.blocking` to read."""
-    findings = [*Linear().check(StrategySpec("partial", {load: load_a})),
+    findings = [*Linear().coherence_check(StrategySpec("partial", {load: load_a})),
                 f"{NOT_CHECKED} — a plain string from somewhere else",
                 "a plain string that is a real defect"]
     assert blocking(findings) == [f for f in findings if not f.startswith(NOT_CHECKED)]
@@ -323,7 +323,7 @@ def test_every_check_tags_its_findings_with_its_own_name():
     produced = {f.check for f in _every_finding_we_can_provoke()}
     assert produced, "no findings were provoked — the assertions below would pass vacuously"
     for name in produced:
-        if name == "GraphSpec._check":
+        if name == "GraphSpec._coherence_check":
             continue        # cycle detection needs `ancestry`; it has no `check_*` function
         assert callable(getattr(c, name, None)), f"`check={name!r}` names no function in checks"
 
@@ -340,7 +340,7 @@ def test_about_names_something_the_caller_can_look_up():
     resolvable = {n.name for n in (*spec.nodes, *spec.joins, *spec.decisions)}
     resolvable |= {"START", "END", _broken_arm.name}
 
-    findings = spec.check(_broken_arm)
+    findings = spec.coherence_check(_broken_arm)
     assert len(findings) > 5, f"only {len(findings)} findings — not enough to be a real sweep"
     for f in findings:
         if not f.about:
@@ -455,7 +455,7 @@ _broken_arm = StrategySpec("broken_arm", {_split: _untyped, _merge: _untyped, _l
 def _every_finding_we_can_provoke():
     """Findings from across the check surface — the broken design, plus the cases its shape
     cannot reach."""
-    out = list(_Broken().check(_broken_arm))
+    out = list(_Broken().coherence_check(_broken_arm))
     out += check_names((load, StepSpec("load", (text,), (text,))))
     out += check_implementations(StrategySpec("x", {load: "nope"}))
     out += check_reachable((StepSpec("stranded"),), ())

@@ -7,7 +7,29 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.3.0] — 2026-10-01
 
-### Added — `check()` returns `CoherenceFinding`, not a bare `str`
+### ⛔ Breaking — `check()` is renamed to `coherence_check()`
+
+**Step-by-step upgrade: [`docs/migration-0.3.md`](docs/migration-0.3.md).** One line:
+
+```python
+spec.check(strategy)              # 0.2.0
+spec.coherence_check(strategy)    # 0.3.0
+```
+
+No alias. A missed call site is an `AttributeError` at the call, not a silent change of
+behaviour — same choice 0.2.0 made when `NodeSpec(...)` became a `TypeError`.
+
+**Why.** `check()` did not say what it checks, and the type it returns says `Coherence` — a word
+that appeared nowhere else in the API. One concept was wearing two names, which is the thing the
+house naming rule exists to prevent. `coherence_check()` grounds it.
+
+`design_check()` was considered and rejected: `spec` *is* the design, so `spec.design_check()`
+restates its own receiver.
+
+**Unchanged:** the eleven `check_*` functions, and the `check` field on a finding — both name an
+individual check, which is what they still are.
+
+### Added — `coherence_check()` returns `CoherenceFinding`, not a bare `str`
 
 **Backward compatible. No call site needs editing** — `CoherenceFinding` is a `str` subclass, so
 `"x" in f`, `f.startswith(...)`, `"\n".join(findings)`, `f == "the message"`, sorting, hashing
@@ -28,14 +50,14 @@ blocking(findings)        # the filter `render()` uses; replaces startswith("NOT
 `[f for f in findings if not f.startswith("NOT CHECKED")]` was load-bearing control flow in three
 production call sites here and in both downstream repos — two different kinds of finding wearing
 one type, told apart by a prefix match. `.claude/rules/checks.md`: *NOT CHECKED and 0 FOUND must
-never render the same.* An agent using `check()` as its acceptance test could only regex it.
+never render the same.* An agent using `coherence_check()` as its acceptance test could only regex it.
 
 A frozen dataclass is tidier and costs a second breaking migration one release after `StepSpec`;
 that is why the subclass wins. `blocking` is a bool rather than a severity enum — two states, and
 no third has been observed.
 
 - `CoherenceFinding`, `blocking()` and `NOT_CHECKED` are exported from the package root.
-- `check()` and every `check_*` function are now annotated `list[CoherenceFinding]`.
+- `coherence_check()` and every `check_*` function are now annotated `list[CoherenceFinding]`.
 
 ### Upgrading
 

@@ -109,7 +109,7 @@ def eval_battle(spec: GraphSpec, strategy_a: StrategySpec, strategy_b: StrategyS
         # never silently reported as though two different things were compared.
         pass
     for s in (strategy_a, strategy_b):
-        findings = blocking(spec.check(s))
+        findings = blocking(spec.coherence_check(s))
         if findings:
             raise SpecError(f"strategy {s.name!r} does not satisfy "
                             f"{spec.name or type(spec).__name__}:\n  " + "\n  ".join(findings))

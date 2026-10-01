@@ -77,7 +77,7 @@ uv run python3 -m examples.greeting
 Everything it produces goes to the terminal; no files are written. Excerpt:
 
 ```
-1. check() with nothing implemented: clean
+1. coherence_check() with nothing implemented: clean
 ...
 3. what varies between the two strategies: {'normalize': ('trim', 'trim_and_collapse')}
 ...
@@ -98,7 +98,7 @@ viewer is available as a separate process — `uv run python3 -m workflow_workbe
 | | step | what you can inspect |
 |---|---|---|
 | 1 | specify the workflow | the nodes, named values and edges, as data |
-| 2 | check and draw it | `check()` findings and `diagram()` mermaid, with nothing implemented |
+| 2 | check and draw it | `coherence_check()` findings and `diagram()` mermaid, with nothing implemented |
 | 3 | implement the steps | ordinary Pydantic Graph step bodies |
 | 4 | bind a named strategy | `diagram(strategy)` — the design with each role's implementation named |
 | 5 | check the strategy | missing bindings, wrong return types, and `render()` refusing outright |
@@ -193,7 +193,7 @@ blocking(spec.check(unfinished))    # what `render()` refuses on, gaps excluded
 
 `blocking` is a bool rather than a severity enum because there are two states and no third has
 turned up. A stated gap and a clean pass must never read the same — that is the one distinction
-`check()` has always made, and it used to be recoverable only with `startswith("NOT CHECKED")`.
+`coherence_check()` has always made, and it used to be recoverable only with `startswith("NOT CHECKED")`.
 
 Which is what makes growing a workflow safe: add a node and every existing strategy fails loudly
 rather than skipping a step it never heard of
@@ -246,7 +246,7 @@ specification guarantees; behaviour is what the battle is for.
 
 The specification is the reviewable artifact. Review the diagram and the contracts, and the
 agent's job narrows to step bodies satisfying a declared input and output type for a named role,
-with `check()` as the acceptance test.
+with `coherence_check()` as the acceptance test.
 
 A proposed change to the workflow itself is then a diff to `nodes` and `edges` — one small place,
 reviewed on its own, not a behaviour change buried in a function body.

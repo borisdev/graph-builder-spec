@@ -119,7 +119,7 @@ def spec_payload(spec: GraphSpec, strategies: list[StrategySpec]) -> dict[str, A
                 "unbound": False,
                 **_source_of(impl),
             }
-        findings = spec.check(s)
+        findings = spec.coherence_check(s)
         layers.append({
             "name": s.name,
             "bindings": bindings,
@@ -134,7 +134,7 @@ def spec_payload(spec: GraphSpec, strategies: list[StrategySpec]) -> dict[str, A
         "nodes": nodes,
         "edges": edges,
         "layers": layers,
-        "design_findings": spec.check(),
+        "design_findings": spec.coherence_check(),
         "mermaid": spec.diagram(),
     }
 
