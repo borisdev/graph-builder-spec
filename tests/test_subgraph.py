@@ -574,3 +574,44 @@ def test_a_real_fan_in_is_still_caught_next_to_a_loop() -> None:
                  EdgeSpec(source=sink, target=END, carries=text))
 
     assert any("invoked once PER EDGE" in f for f in RealFanIn().check()), RealFanIn().check()
+
+
+def test_a_subgraph_finding_is_about_the_PARENT_node_the_child_is_bound_to() -> None:
+    """The child graph is coherent on its own — `WrongInput` renders and runs. What is wrong is
+    the pairing, and the parent node is the only name that exists in the design the caller
+    handed in. Naming the child's node would point at another design entirely.
+    """
+    other = StepSpec("other", inputs=(number,), outputs=(text,))
+
+    class WrongInput(GraphSpec):
+        name = "wrong_input"
+        state_type, deps_type = State, Deps
+        input_type, output_type = int, str
+        nodes = (other,)
+        edges = (EdgeSpec(source=START, target=other, carries=number),
+                 EdgeSpec(source=other, target=END, carries=text))
+
+    async def run(ctx) -> str:
+        return str(ctx.inputs)
+
+    bad = StrategySpec("bad", {transform: SubgraphBinding(
+        graph=WrongInput(), strategy=StrategySpec("inner", {other: run}))})
+
+    mismatch = [f for f in Parent().check(bad) if "input_type" in f]
+    assert [(f.check, f.about) for f in mismatch] == [("check_subgraphs", "transform")]
+
+
+def test_a_recursive_binding_is_about_the_STRATEGY_not_the_design() -> None:
+    """⚠️ The one finding produced outside `checks.py` — `GraphSpec._check` owns cycle detection
+    because it is the only thing holding the `ancestry`. It is therefore the one most likely to
+    be left untagged, and nothing else here would notice.
+
+    `about` is the strategy because the design is fine: `Parent` and `Child` are both coherent,
+    and swapping the strategy is the move that fixes it.
+    """
+    loop = StrategySpec("loop", {transform: direct})
+    loop.bindings[transform] = SubgraphBinding(graph=Parent(), strategy=loop)
+
+    recursive = [f for f in Parent().check(loop) if "recursive subgraph binding" in f]
+    assert recursive, "the cycle was not detected at all"
+    assert all((f.check, f.about) == ("GraphSpec._check", "loop") for f in recursive)

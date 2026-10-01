@@ -5,6 +5,43 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-01
+
+### Added — `check()` returns `CoherenceFinding`, not a bare `str`
+
+**Backward compatible. No call site needs editing** — `CoherenceFinding` is a `str` subclass, so
+`"x" in f`, `f.startswith(...)`, `"\n".join(findings)`, `f == "the message"`, sorting, hashing
+and `repr()` in a printed list all behave exactly as before. Verified byte-for-byte across all 64
+findings the test designs produce: nothing in the text moved.
+
+```python
+f = spec.check(strategy)[0]
+f.check       # 'check_bindings' — the function that produced it
+f.about       # 'compose' — a node name; 'source->target' for an edge; '' for the whole design
+f.blocking    # True — False only for a `NOT CHECKED — …` stated gap
+
+from workflow_workbench import blocking
+blocking(findings)        # the filter `render()` uses; replaces startswith("NOT CHECKED")
+```
+
+**Why.** The findings were sentences, so the structure a caller needs was encoded in the prose.
+`[f for f in findings if not f.startswith("NOT CHECKED")]` was load-bearing control flow in three
+production call sites here and in both downstream repos — two different kinds of finding wearing
+one type, told apart by a prefix match. `.claude/rules/checks.md`: *NOT CHECKED and 0 FOUND must
+never render the same.* An agent using `check()` as its acceptance test could only regex it.
+
+A frozen dataclass is tidier and costs a second breaking migration one release after `StepSpec`;
+that is why the subclass wins. `blocking` is a bool rather than a severity enum — two states, and
+no third has been observed.
+
+- `CoherenceFinding`, `blocking()` and `NOT_CHECKED` are exported from the package root.
+- `check()` and every `check_*` function are now annotated `list[CoherenceFinding]`.
+
+### Upgrading
+
+Nothing to do. `uv lock --upgrade-package workflow-workbench` when you want the fields; until
+then a pinned consumer is unaffected.
+
 ## [0.2.0] — 2026-09-30
 
 ### ⛔ Breaking — `NodeSpec` is renamed to `StepSpec`

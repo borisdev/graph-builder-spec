@@ -177,6 +177,24 @@ spec.check(unfinished)
 spec.render(unfinished)   # raises SpecError with the same finding
 ```
 
+A finding is a sentence, and it is also **structured**. `CoherenceFinding` is a `str` subclass, so
+everything above reads exactly as it looks — and an agent driving this as its acceptance test can
+branch on fields instead of matching on prose:
+
+```python
+f = spec.check(unfinished)[0]
+f.check       # 'check_bindings'  — which check produced it
+f.about       # 'compose'         — the node; 'source->target' for an edge; '' for the design
+f.blocking    # True              — False only for a `NOT CHECKED — …` stated gap
+
+from workflow_workbench import blocking
+blocking(spec.check(unfinished))    # what `render()` refuses on, gaps excluded
+```
+
+`blocking` is a bool rather than a severity enum because there are two states and no third has
+turned up. A stated gap and a clean pass must never read the same — that is the one distinction
+`check()` has always made, and it used to be recoverable only with `startswith("NOT CHECKED")`.
+
 Which is what makes growing a workflow safe: add a node and every existing strategy fails loudly
 rather than skipping a step it never heard of
 ([`stage3_new_node.py`](examples/ladder/stage3_new_node.py)).

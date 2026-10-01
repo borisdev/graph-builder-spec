@@ -242,3 +242,31 @@ def test_the_join_need_not_be_adjacent_to_the_fan_out() -> None:
     strategy = StrategySpec("s", {first: keep, second: double})
     assert spec.check(strategy) == []
     assert spec.render(strategy).run_sync(inputs=[1, 2, 3]) == 12
+
+
+def test_the_fan_out_finding_is_about_the_EDGE_that_fans_out() -> None:
+    """`about` is the handle a caller filters on, and for this defect it is the edge.
+
+    Neither endpoint alone names the problem: START is fine and `price` is fine — it is the
+    `.map()` between them with nothing downstream to divide it back. An `about` naming either
+    node would send an agent to fix something that is not broken.
+    """
+    shopping = VariableSpec("shopping", list)
+    item = VariableSpec("item", str)
+    cost = VariableSpec("cost", float)
+    price = StepSpec("price", inputs=(item,), outputs=(cost,))
+
+    class NoJoin(GraphSpec):
+        name = "no_join"
+        input_type, output_type = list, float
+        nodes = (price,)
+        edges = (MapEdgeSpec(source=START, target=price, carries=shopping, delivers=item),
+                 EdgeSpec(source=price, target=END, carries=cost))
+
+    async def look_up(ctx) -> float:
+        return 1.0
+
+    fan = [f for f in NoJoin().check(StrategySpec("s", {price: look_up}))
+           if "without passing a join" in f]
+    assert [(f.check, f.about, f.blocking) for f in fan] == \
+        [("check_fan_out_rejoins", "START->price", True)]

@@ -19,6 +19,7 @@ from __future__ import annotations
 import inspect
 from typing import Any
 
+from workflow_workbench.checks import blocking
 from workflow_workbench.diagram import impl_name
 from workflow_workbench.graph_spec import GraphSpec
 from workflow_workbench.spec import StrategySpec, SubgraphBinding, is_sentinel
@@ -123,7 +124,7 @@ def spec_payload(spec: GraphSpec, strategies: list[StrategySpec]) -> dict[str, A
             "name": s.name,
             "bindings": bindings,
             "findings": findings,
-            "ok": not [f for f in findings if not f.startswith("NOT CHECKED")],
+            "ok": not blocking(findings),
         })
 
     return {

@@ -187,3 +187,31 @@ def test_fan_out_and_reshape_are_separate_types() -> None:
     assert not issubclass(TransformEdgeSpec, MapEdgeSpec)
     assert not hasattr(TransformEdgeSpec(source=propose, target=cite, carries=draft, delivers=edge_list, apply=take_edges),
                        "map_over")
+
+
+def test_a_transform_finding_is_about_the_WIRE_it_sits_on() -> None:
+    """A transform edge has no name of its own, so `about` is its two endpoints.
+
+    ⚠️ The assertion worth having is that TWO different checks hand back the SAME handle for the
+    same wire. `check_bindings` sees an unbound variation point and `check_transform_edges` sees
+    a transform that reshapes nothing — one defect, two checks, and a caller grouping findings by
+    `about` must get one group rather than two.
+    """
+    incomplete = StrategySpec("incomplete", {propose: do_propose, cite: do_cite})
+    findings = Varying().check(incomplete)
+
+    unbound = [f for f in findings if "no `apply=` and no binding" in f]
+    assert [(f.check, f.about) for f in unbound] == [("check_transform_edges", "propose->cite")]
+
+    not_bound = [f for f in findings if "does not bind" in f]
+    assert [(f.check, f.about) for f in not_bound] == [("check_bindings", "propose->cite")]
+
+
+def test_an_async_transform_finding_is_about_that_wire_too() -> None:
+    async def slow(ctx) -> list:
+        return ctx.inputs.edges
+
+    s = StrategySpec("bad", {propose: do_propose, cite: do_cite, shape: slow})
+    async_findings = [f for f in Varying().check(s) if "cannot await" in f]
+    assert [(f.check, f.about) for f in async_findings] == \
+        [("check_transform_edges", "propose->cite")]
