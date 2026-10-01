@@ -1,11 +1,11 @@
 # workflow-workbench
 
 **Let an AI coding agent build a workflow unsupervised and it produces code that works and is
-incoherent.** Not broken — that you would notice. Incoherent: a fan-out whose results are
+[incoherent](docs/glossary.md#coherence).** Not broken — that you would notice. Incoherent: a fan-out whose results are
 silently dropped, two wires crossed between values of the same type, a stage nobody implemented.
 It runs, it returns something of the right shape, and nothing downstream can tell.
 
-Workflow Workbench is a declaration layer over Pydantic Graph Builder. You write the workflow's
+Workflow Workbench is a [declaration layer](docs/glossary.md#declaration-layer) over Pydantic Graph Builder. You write the workflow's
 shape and its data contracts as **data**, before any step exists — which is what makes that class
 of defect findable:
 
@@ -22,9 +22,9 @@ Four problems, and the same declaration answers all four:
 
 | | |
 |---|---|
-| **An agent's output works and is incoherent.** Each piece is locally fine; the whole does not add up. | `coherence_check()` — 11 well-formedness rules, 7 needing nothing implemented |
-| **A reasoning strategy cannot be asserted correct — only compared.** There is no right answer to diff against, so "better" is an empirical question. | `eval_battle()` — same cases, same evaluators, plus a replicate arm as the noise floor |
-| **Complexity grows unless pieces are reused.** Two arms that differ in one stage should say so, not be two files. | the data language: declare a role once, bind it many ways; `SubgraphBinding` reuses a whole child design as one node |
+| **An agent's output works and is incoherent.** Each piece is locally fine; the whole does not add up. | `coherence_check()` — 11 [well-formedness rules](docs/glossary.md#well-formedness-rule), 7 needing nothing implemented |
+| **A reasoning strategy cannot be asserted correct — only compared.** There is no right answer to diff against, so "better" is an empirical question. | [`eval_battle()`](docs/glossary.md#battle) — same cases, same evaluators, plus a replicate arm as the [noise floor](docs/glossary.md#noise-floor) |
+| **Complexity grows unless pieces are reused.** Two arms that differ in one stage should say so, not be two files. | the [data language](docs/glossary.md#deep-embedding): declare a role once, bind it many ways; `SubgraphBinding` reuses a whole child design as one node |
 | **You cannot see what you built.** | `diagram()` and `diff_diagram()`, from the declaration alone |
 
 On that last one, honestly: Pydantic Graph **can** emit mermaid — `build_mermaid_graph` in
@@ -34,6 +34,9 @@ code. And ours can draw **two strategies at once**, greying what they share and 
 differs, which is a question about a comparison rather than about a graph.
 
 Pydantic Graph executes the workflow; Pydantic Evals evaluates its results.
+
+Terms used precisely here — *coherence*, *well-formedness*, *stated gap*, *battle* — are defined
+in the [glossary](docs/glossary.md), with where each word comes from and what it does **not** mean.
 
 Built on [Pydantic Graph](https://ai.pydantic.dev/graph/) and
 [Pydantic Evals](https://ai.pydantic.dev/evals/). Independent; not affiliated with Pydantic.
@@ -170,7 +173,7 @@ specification checks and what an evaluation measures, which is why `eval_battle`
 
 A finding is a `CoherenceFinding`: a `str` subclass, so it reads as the sentence it is, carrying
 `check`, `about` and `blocking` so an agent can branch on structure rather than parse English. A
-`NOT CHECKED — …` finding is a **stated gap**, not a pass, and does not block `render()`.
+`NOT CHECKED — …` finding is a [**stated gap**](docs/glossary.md#stated-gap), not a pass, and does not block `render()`.
 
 
 ## The same example, in five stages
