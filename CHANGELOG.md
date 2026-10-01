@@ -37,7 +37,7 @@ and `repr()` in a printed list all behave exactly as before. Verified byte-for-b
 findings the test designs produce: nothing in the text moved.
 
 ```python
-f = spec.check(strategy)[0]
+f = spec.coherence_check(strategy)[0]
 f.check       # 'check_bindings' — the function that produced it
 f.about       # 'compose' — a node name; 'source->target' for an edge; '' for the whole design
 f.blocking    # True — False only for a `NOT CHECKED — …` stated gap

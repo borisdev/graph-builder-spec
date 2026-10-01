@@ -138,7 +138,7 @@ slots are one transposition away from a graph that is wrong and runs.
 
 ```python
 spec = Greeting()
-spec.check()      # -> [] — no strategy, no implementations, no engine
+spec.coherence_check()      # -> [] — no strategy, no implementations, no engine
 spec.diagram()    # -> mermaid for the specification
 ```
 
@@ -170,7 +170,7 @@ says so; `render()` refuses rather than building a graph with a hole in it:
 
 ```python
 unfinished = StrategySpec("unfinished", {normalize: trim_and_collapse})
-spec.check(unfinished)
+spec.coherence_check(unfinished)
 # ["strategy 'unfinished' does not bind node 'compose'. Every one is bound explicitly,
 #   including unchanged ones — a partial strategy makes 'what varies between these arms'
 #   unanswerable without reading both files."]
@@ -182,13 +182,13 @@ everything above reads exactly as it looks — and an agent driving this as its 
 branch on fields instead of matching on prose:
 
 ```python
-f = spec.check(unfinished)[0]
+f = spec.coherence_check(unfinished)[0]
 f.check       # 'check_bindings'  — which check produced it
 f.about       # 'compose'         — the node; 'source->target' for an edge; '' for the design
 f.blocking    # True              — False only for a `NOT CHECKED — …` stated gap
 
 from workflow_workbench import blocking
-blocking(spec.check(unfinished))    # what `render()` refuses on, gaps excluded
+blocking(spec.coherence_check(unfinished))    # what `render()` refuses on, gaps excluded
 ```
 
 `blocking` is a bool rather than a severity enum because there are two states and no third has
