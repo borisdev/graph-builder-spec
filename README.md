@@ -18,6 +18,15 @@ spec.render(strategy)       # refuses outright if anything blocks
 So the agent gets an acceptance test it cannot talk its way past, and you get a drawing of the
 design before you read a line of its code.
 
+**What you do:** specify the workflow and its data contracts, inspect its diagram, then have the
+agent implement the steps. Bind alternative implementations as strategies and compare them
+through simple evaluation battles.
+
+The declaration is also the part you can hold in your head, and it stays that way: **its size is
+set by the shape of the workflow, not by the complexity of the steps.** A step body can grow to
+500 lines; `StepSpec("price", inputs=(item,), outputs=(cost,))` stays one. Across the examples in
+this repo the declaration runs 11 to 43 lines, whatever is bound into it.
+
 Four problems, and the same declaration answers all four:
 
 | | |
