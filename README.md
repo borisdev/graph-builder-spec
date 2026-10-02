@@ -44,6 +44,36 @@ differs, which is a question about a comparison rather than about a graph.
 
 Pydantic Graph executes the workflow; Pydantic Evals evaluates its results.
 
+### The thesis, in one line
+
+**Making AI-agent development with an SWE agent interpretable.**
+
+Longer: an opinionated declaration layer for work that is *subjective and hard to evaluate* —
+mixing and matching algorithms so that quasi-language reasoning can be done safely, comparably,
+debuggably, auditably. It makes two reasoning strategies **always** comparable — enforced, not
+hoped for, since a battle takes one design and bindings are matched by identity — and makes the
+difference attributable to a **named stage**, then draws it.
+
+The division of labour that falls out of it is the part worth keeping:
+
+| owns | | |
+|---|---|---|
+| **you** | the declaration | ~15 lines, readable in one sitting |
+| **the agent** | the step bodies | however long they need to be |
+| **`coherence_check()`** | the contract between them | an acceptance test it cannot talk its way past |
+
+An agent can rewrite every step body and **cannot quietly change the shape**, because changing
+the shape means editing the lines you read.
+
+### ⛔ When not to use this
+
+If your stages are deterministic and you would never swap one, you do not need this. Use
+Pydantic Graph directly.
+
+This earns its keep when a stage is a **judgement call** — when two competent people would
+implement it differently, and you cannot assert which is right, only measure which does better.
+A stage worth declaring is a stage worth arguing about.
+
 Terms used precisely here — *coherence*, *well-formedness*, *stated gap*, *battle* — are defined
 in the [glossary](docs/glossary.md), with where each word comes from and what it does **not** mean.
 
@@ -92,6 +122,13 @@ evaluation separates them:
 A **battle** runs both strategies over the same cases with the same evaluators — here exact
 matching against the expected greeting. `0.50` is two of four: a result on this four-case
 demonstration dataset and nothing beyond it.
+
+⚠️ **And you would never need this library for this.** Nothing in the greeting example is
+contestable — `trim` versus `trim_and_collapse` is a question with a right answer you could look
+up. It is here because the whole mechanism fits in sixty seconds at this size, not because it
+earns its keep. [`examples/contestable.py`](examples/contestable.py) is the shape that does:
+four stages that are each a judgement call, two strategies differing in one of them, and — since
+a design is data — a diagram, a coherence check and a diff with **nothing implemented**.
 
 `eval_battle` also scores one strategy against itself; that replicate is the noise floor a real
 delta has to clear. It is `0.00` here because both implementations are deterministic — a `0.00`

@@ -42,6 +42,11 @@ class Node(BaseModel):
     kind: str = "step"
     inputs: list[Variable] = Field(default_factory=list)
     outputs: list[Variable] = Field(default_factory=list)
+    problem: str = ""
+    """`StepSpec.problem` — what makes this role hard, for whoever implements it.
+
+    ⚠️ `""` means nobody wrote one, not that the stage is trivial. The viewer must not render an
+    absent brief as "no notes"."""
 
 
 class Edge(BaseModel):

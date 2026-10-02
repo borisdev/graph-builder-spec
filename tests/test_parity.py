@@ -130,7 +130,11 @@ def _prose_docs(*, include_migration: bool = True) -> list[tuple[str, str]]:
     ⚠️ Not just the README. `docs/` holds the ladder, the design notes and the generated parity
     table, and a snippet in any of them is one a reader will paste.
     """
-    paths = sorted(ROOT.glob("*.md")) + sorted(ROOT.glob("docs/*.md"))
+    # ⚠️ `.claude/skills/` is included, and it is the file that matters MOST here: a skill is
+    # prose an AGENT reads and acts on, so a retired API named there is not a confused human —
+    # it is generated code calling a method that no longer exists.
+    paths = (sorted(ROOT.glob("*.md")) + sorted(ROOT.glob("docs/*.md"))
+             + sorted(ROOT.glob(".claude/skills/**/*.md")))
     out = [(str(p.relative_to(ROOT)), p.read_text()) for p in paths]
     if not include_migration:
         out = [(n, t) for n, t in out if n not in _NAMES_THE_OLD_API]

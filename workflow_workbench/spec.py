@@ -150,6 +150,22 @@ class StepSpec:
     name: str
     inputs: tuple[VariableSpec, ...] = ()
     outputs: tuple[VariableSpec, ...] = ()
+    problem: str = ""
+    """What makes this role HARD — the colocated brief for whoever implements it.
+
+    ⛔ The PROBLEM, never the solution. The design owns what must be dealt with; a strategy owns
+    how. "Rank the survivors; two reasonable rankings of one set can disagree completely" belongs
+    here. "Sort by score descending" does not — that is one arm's answer, and writing it here
+    quietly makes every other arm wrong by definition.
+
+    ⚠️ Called `problem` and not `description` on purpose. A field called `description` invites
+    "normalizes the name", which restates `name` and tells an implementer nothing. A field called
+    `problem` cannot be filled that way without the emptiness showing.
+
+    ⚠️ Empty is the honest default and means nothing is claimed. It does NOT mean the stage is
+    easy — an absent brief and a stage with no judgement in it must not read the same, and
+    nothing here can tell them apart.
+    """
     streams: bool = False
     """This role is filled by an async GENERATOR, built with `g.stream` rather than `g.step`.
 

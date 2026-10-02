@@ -18,6 +18,8 @@ export interface Node {
   kind?: string;
   inputs?: Variable[];
   outputs?: Variable[];
+  /** What makes this role hard. "" means nobody wrote one, NOT that it is trivial. */
+  problem?: string;
 }
 
 export interface Edge {

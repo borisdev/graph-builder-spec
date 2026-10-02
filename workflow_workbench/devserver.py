@@ -80,6 +80,7 @@ def spec_payload(spec: GraphSpec, strategies: list[StrategySpec]) -> dict[str, A
         {
             "id": n.name,
             "kind": "step",
+            "problem": getattr(n, "problem", ""),
             "inputs": [{"name": v.name, "type": getattr(v.type, "__name__", str(v.type))}
                        for v in n.inputs],
             "outputs": [{"name": v.name, "type": getattr(v.type, "__name__", str(v.type))}
