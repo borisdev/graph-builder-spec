@@ -118,6 +118,7 @@ def spec_payload(spec: GraphSpec, strategies: list[StrategySpec]) -> dict[str, A
                 # An explicit decline, which is a different fact from "nobody wired it".
                 "skipped": name == "skip",
                 "unbound": False,
+                "subgraph": isinstance(impl, SubgraphBinding),
                 **_source_of(impl),
             }
         findings = spec.coherence_check(s)

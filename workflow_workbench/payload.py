@@ -78,6 +78,13 @@ class Binding(BaseModel):
     impl: str | None = None
     skipped: bool = False
     unbound: bool = False
+    subgraph: bool = False
+    """This arm fills the role with a whole child design, not a function — so the viewer can
+    offer a drill-down rather than a block of source.
+
+    ⚠️ An explicit field, NOT inferred from `impl` containing `::`. A viewer that string-matches
+    the label is one rename away from silently losing every drill-down, and nothing would say
+    so."""
     file: str = ""
     line: int = 0
     code: str = ""

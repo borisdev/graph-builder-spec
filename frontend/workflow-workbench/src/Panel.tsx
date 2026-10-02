@@ -136,6 +136,17 @@ export function Panel({
       <section>
         <h3>Code</h3>
         {!picked && <p className="ws-sub">tap a stage in the graph to see its implementations.</p>}
+        {/* ⛔ Scores are per STRATEGY, never per stage — nothing measures one stage on its own.
+            Saying so is the whole point: a panel that shows a stage's code and silently shows no
+            number invites the reader to supply one. `checks.md` — NOT CHECKED and 0 FOUND must
+            never render the same, and an empty space is the most convincing 0 there is. */}
+        {picked && (
+          <p className="ws-sub">
+            <span className="ws-nr">no per-stage result</span> — scores are measured per strategy,
+            end to end, so no number here belongs to <span className="ws-mono">{picked}</span>{" "}
+            alone.
+          </p>
+        )}
         {picked &&
           codeFor.map((l) => {
             const bd = l!.bindings?.[picked];

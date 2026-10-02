@@ -44,8 +44,13 @@ REPORT = {
                                   "code": "async def propose_llm(ctx): ..."},
                       "cite": {"impl": "cite_medline_kg", "file": "b.py", "line": 20,
                                "code": "async def cite_medline_kg(ctx): ..."},
-                      "enrich": {"impl": "enrich_from_literature", "file": "b.py", "line": 30,
-                                 "code": "async def enrich_from_literature(ctx): ..."}}},
+                      # ⚠️ `impl` deliberately contains NO "::". A viewer that infers
+                      # composed-ness by string-matching the label instead of reading the
+                      # `subgraph` field passes against a `child::strategy` label and fails
+                      # here — which is the only way that substitution is detectable.
+                      "enrich": {"impl": "thorough_child", "subgraph": True,
+                                 "file": "b.py", "line": 30,
+                                 "code": "async def inner(ctx): ..."}}},
     ],
     "noise_floor": {"Recall": 0.25},
 }
@@ -282,3 +287,43 @@ def test_the_bindings_table_is_not_wrapped_into_one_letter_per_line(report_url):
         }""")
         # "propose" at ~11px monospace needs ~55px. One letter per line would be under 20.
         assert w["w"] > 45, f"bindings first column is {w['w']}px for {w['text']!r} — wrapped"
+
+
+def test_a_composed_stage_announces_itself_on_the_canvas(report_url):
+    """⛔ RUN IN THE BROWSER, because the thing that breaks is a stale bundle.
+
+    `workflow_workbench/static/workflow-workbench.js` is a BUILT artifact committed to the repo.
+    Editing `nodes.tsx` changes nothing until `npm run build` regenerates it — so a test that
+    read the .tsx, or grepped the served HTML, would pass against a bundle that never learned
+    about this. This queries the DOM React Flow actually produced.
+    """
+    with Island(report_url) as i:
+        assert i.errors == [], i.errors
+        composed = i.page.query_selector_all(".ws-composed")
+        assert len(composed) == 1, f"expected exactly the one composed stage, got {len(composed)}"
+        assert "enrich" in composed[0].inner_text()
+        assert "subgraph" in composed[0].inner_text().lower(), (
+            "the drill-down affordance is not visible — a composed stage reads as an ordinary box")
+
+
+def test_a_plain_stage_is_not_marked_composed(report_url):
+    """The other half. A badge that appears on everything says nothing."""
+    with Island(report_url) as i:
+        ids = [n.get_attribute("data-id") for n in i.page.query_selector_all(".react-flow__node")]
+        assert "propose" in ids
+        plain = i.page.query_selector('.react-flow__node[data-id="propose"] .ws-node')
+        assert plain is not None
+        assert "ws-composed" not in (plain.get_attribute("class") or "")
+        assert "subgraph" not in plain.inner_text().lower()
+
+
+def test_clicking_a_stage_says_there_is_no_per_stage_result(report_url):
+    """⛔ Scores are per STRATEGY, end to end. A panel that shows a stage's code and silently
+    shows no number invites the reader to supply one — an empty space is the most convincing
+    0 there is. `checks.md`: NOT CHECKED and 0 FOUND must never render the same."""
+    with Island(report_url) as i:
+        i.page.click('.react-flow__node[data-id="cite"]')
+        i.page.wait_for_timeout(300)
+        body = i.page.inner_text("body").lower()
+        assert "no per-stage result" in body, body[-600:]
+        assert i.errors == [], i.errors
