@@ -64,7 +64,9 @@ def test_the_example_never_prints_a_score() -> None:
                          cwd=ROOT, capture_output=True, text=True, timeout=120)
     assert out.returncode == 0, out.stderr
     assert "DELIBERATELY ABSENT" in out.stdout
-    scores = re.findall(r"\b0\.\d+\b|\bscore[d]?\s*[:=]\s*[\d.]+", out.stdout, re.I)
+    # ⛔ ANY decimal, not just `0.x`. The old class missed a perfect 1.0 — the most
+    # flattering number a fabricated score can be, and the one most likely to get printed.
+    scores = re.findall(r"\b\d+\.\d+\b|\bscore[d]?\s*[:=]\s*[\d.]+", out.stdout, re.I)
     assert not scores, f"the stub example printed something score-shaped: {scores}"
 
 

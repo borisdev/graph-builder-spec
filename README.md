@@ -10,7 +10,7 @@ shape and its data contracts as **data**, before any step exists — which is wh
 of defect findable:
 
 ```python
-spec.coherence_check()      # 11 well-formedness rules, 7 of them with nothing implemented
+spec.coherence_check()      # 12 well-formedness rules, 7 of them with nothing implemented
 spec.diagram()              # a picture of the same declaration
 spec.render(strategy)       # refuses outright if anything blocks
 ```
@@ -185,7 +185,7 @@ missed.
 ## What `coherence_check()` enforces
 
 <!-- rules:start -->
-**11 rules.** `coherence_check()` returns one finding per violation and an empty list for a clean design; `render()` refuses on any finding that blocks.
+**12 rules.** `coherence_check()` returns one finding per violation and an empty list for a clean design; `render()` refuses on any finding that blocks.
 
 **7 need no implementations at all** — runnable the moment `nodes` and `edges` are written.
 
@@ -199,7 +199,7 @@ missed.
 | `check_transform_edges` | A transform edge is fixed (`apply=`) or a variation point (bound) — exactly one. |
 | `check_fan_out_rejoins` | Everything a fan-out produces must reach a join before it reaches END. |
 
-**4 more once a strategy exists**, checking the implementations against the roles they fill.
+**5 more once a strategy exists**, checking the implementations against the roles they fill.
 
 | check | rule |
 |---|---|
@@ -207,6 +207,7 @@ missed.
 | `check_implementations` | Each bound CALLABLE is callable and takes exactly one positional argument (`ctx`). |
 | `check_subgraphs` | Every child design used as a node implementation fits the node it is bound to. |
 | `check_variable_types` | Each implementation returns the type its role is declared to produce. |
+| `check_recursion` | A design does not implement one of its own nodes with itself. |
 <!-- rules:end -->
 
 Every one of these exists because it caught something that otherwise **ran and returned a

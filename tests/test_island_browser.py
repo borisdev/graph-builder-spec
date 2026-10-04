@@ -26,7 +26,11 @@ BOOT_TIMEOUT_MS = int(__import__("os").getenv("WS_BOOT_TIMEOUT_MS", "15000"))
 REPORT = {
     "name": "case_build",
     "input_type": "str", "output_type": "CaseGraph",
-    "nodes": [{"id": "propose"}, {"id": "cite"}, {"id": "enrich"}],
+    # ⚠️ `cite` carries a brief and the other two do not — both branches of "render only a
+    # non-empty brief" need a node, or the empty case is untested.
+    "nodes": [{"id": "propose"},
+              {"id": "cite", "problem": "Two reasonable citations of one claim can disagree."},
+              {"id": "enrich"}],
     "edges": [{"source": "__start__", "target": "propose", "variable": "plan_text"},
               {"source": "propose", "target": "cite", "variable": "draft_graph"},
               {"source": "cite", "target": "enrich", "variable": "cited_graph"},
@@ -219,6 +223,28 @@ def test_tapping_a_stage_reveals_its_code(report_url):
         panel = i.page.inner_text(".ws-panel")
         assert "cite_medline_kg" in panel
         assert "b.py:20" in panel
+
+
+def test_a_stages_brief_is_actually_rendered_when_it_has_one(report_url):
+    """⛔ The payload carried `problem` and the browser DROPPED it — App.tsx never put it on
+    StageData and nothing displayed it, so the field justified as "its consumer is the browser
+    payload" was read by nobody while the payload test stayed green. A string test on the
+    template would not have caught that either: the markup was never the problem.
+    """
+    with Island(report_url) as i:
+        i.page.click('.react-flow__node[data-id="cite"]')
+        i.page.wait_for_timeout(300)
+        assert i.page.locator(".ws-brief").is_visible()
+        assert "can disagree" in i.page.inner_text(".ws-brief")
+
+
+def test_a_stage_with_no_brief_shows_no_brief_section(report_url):
+    """An empty `problem` means nobody wrote one, NOT that the stage is easy — so an empty
+    heading asserting a brief exists is worse than no section at all."""
+    with Island(report_url) as i:
+        i.page.click('.react-flow__node[data-id="propose"]')
+        i.page.wait_for_timeout(300)
+        assert i.page.locator(".ws-brief").count() == 0
 
 
 def test_it_fits_a_phone_and_the_canvas_is_on_screen(report_url):

@@ -19,6 +19,7 @@ from workflow_workbench.checks import (
     blocking,
     check_bindings,
     check_fan_out_rejoins,
+    check_recursion,
     check_decisions,
     check_implementations,
     check_names,
@@ -60,5 +61,6 @@ __all__ = [
     "check_names", "check_reachable", "check_variables", "check_bindings",
     "check_implementations", "check_subgraphs", "check_step_arity", "check_decisions",
     "check_variable_types", "check_transform_edges", "check_fan_out_rejoins",
+    "check_recursion",
     "diagram", "diff_diagram",
 ]

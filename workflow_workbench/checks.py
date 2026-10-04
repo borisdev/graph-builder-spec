@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable, Iterable
-from typing import Any
+from typing import Any, TypeVar
 
 from workflow_workbench.spec import (
     Bindable,
@@ -34,13 +34,16 @@ __all__ = ["CoherenceFinding", "blocking", "NOT_CHECKED",
            "check_names", "check_reachable", "check_variables", "check_bindings",
            "check_implementations", "check_subgraphs", "check_step_arity", "check_decisions",
            "check_variable_types", "check_transform_edges",
-           "check_fan_out_rejoins"]
+           "check_fan_out_rejoins", "check_recursion"]
 
 
 NOT_CHECKED = "NOT CHECKED"
 """The prefix that marks a STATED GAP rather than a defect. `.claude/rules/checks.md`: NOT CHECKED
 and 0 FOUND must never render the same — this is the one spelling of that distinction, and
 `CoherenceFinding.blocking` is how a caller reads it without matching on text."""
+
+
+_F = TypeVar("_F", bound=str)
 
 
 def _is_blocking(message: str) -> bool:
@@ -83,14 +86,49 @@ class CoherenceFinding(str):
         return self
 
 
-def blocking(findings: Iterable[str]) -> list[str]:
+def blocking(findings: Iterable[_F]) -> list[_F]:
     """The findings that STOP a render — everything that is not a stated gap.
 
-    ⚠️ Takes `Iterable[str]`, not `Iterable[CoherenceFinding]`, and matches on the prefix rather
-    than reading `.blocking`. A caller that has mixed in a plain string of its own gets the same
-    verdict either way, and `_is_blocking` is what keeps the two readings identical.
+    ⚠️ Accepts any `str` subtype, not `Iterable[CoherenceFinding]`, and matches on the prefix
+    rather than reading `.blocking`. A caller that has mixed in a plain string of its own gets
+    the same verdict either way, and `_is_blocking` is what keeps the two readings identical.
+
+    ⚠️ Generic over that subtype so it PRESERVES it. Annotated `-> list[str]`, this filter was a
+    one-way door: `blocking(spec.coherence_check(s))` came back as plain strings and a typed
+    caller lost `.check`, `.about` and `.blocking` the moment it used the public helper meant to
+    make them reachable.
     """
     return [f for f in findings if _is_blocking(f)]
+
+
+def check_recursion(graph: Any, strategy: StrategySpec,
+                    ancestry: tuple[tuple[type, int], ...]) -> list[CoherenceFinding]:
+    """A design does not implement one of its own nodes with itself.
+
+    ⚠️ The only check that needs `ancestry` — the (design, strategy) pairs already open above
+    this one — so it is the only one a bare `coherence_check()` cannot call. `GraphSpec` passes
+    it, and acts on a non-empty result by returning IMMEDIATELY: rendering a cycle builds child
+    graphs until the stack runs out, so the walk must stop here rather than report and continue.
+
+    ⚠️ It lives here, and it is CALLED from exactly one place. Two owners of one rule is how a
+    chain ends up reported twice, or reported by whichever ran first with the other's message —
+    which is why `check_subgraphs` deliberately does not also look. What moved into this module
+    is the rule; what stayed in `GraphSpec` is the control flow that acts on it.
+
+    ⚠️ `id(strategy)` is safe as an identity key ONLY because every strategy in a chain stays
+    reachable from the root strategy's bindings for the whole walk, so none can be collected and
+    have its id reused underneath us.
+
+    `about` is the STRATEGY, not a node: the design is fine, and swapping the strategy is the move.
+    """
+    if (type(graph), id(strategy)) not in ancestry:
+        return []
+    return [CoherenceFinding(
+        f"recursive subgraph binding: {graph.name or type(graph).__name__!r} with strategy "
+        f"{strategy.name!r} appears inside its own subgraph chain. Rendering it would "
+        f"build child graphs until the stack ran out — a design cannot implement one of "
+        f"its own nodes with itself.",
+        check="check_recursion", about=strategy.name)]
 
 
 def _name(ep: Any) -> str:
@@ -287,7 +325,7 @@ def check_bindings(bindables: tuple[Bindable, ...],
                 f"not declare. "
                 f"Most likely it was written against a different GraphSpec that has a node of the "
                 f"same name.",
-                check="check_bindings", about=_about(n)))
+                check="check_bindings", about=strategy.name))
     return findings
 
 
@@ -438,6 +476,14 @@ def check_subgraphs(parent: Any, strategy: StrategySpec,
         # ⚠️ NOT re-tagged. A child's findings already name the check that produced them and the
         # node inside the CHILD they are about; overwriting either with the parent's node would
         # replace a precise answer with a vaguer one.
+        #
+        # ⚠️ KNOWN LIMIT, and it cuts against the `about` invariant stated on `CoherenceFinding`:
+        # the caller called `parent.coherence_check(...)` and holds only the parent, so a child's
+        # `about` is not resolvable for them and collides with the same name in another child.
+        # Both readings are right about different things — precision vs. a usable handle — and
+        # reconciling them means `about` carrying a PATH across a boundary. That is a semantic
+        # change to the field, so it lands with the nested-graph rename rather than being
+        # smuggled in here.
         findings += child._coherence_check(child_strategy, ancestry=ancestry)
 
     return findings

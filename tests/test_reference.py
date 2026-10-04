@@ -12,6 +12,7 @@ unchecked convention drifts back within a month, so the check IS the rule.
 from __future__ import annotations
 
 import inspect
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -69,6 +70,43 @@ def test_every_check_in_the_module_reaches_the_rules_table() -> None:
         "a check_* function is missing from checks.__all__, so the table cannot see it")
 
 
+def test_the_hand_written_count_in_the_prose_matches_the_generated_table() -> None:
+    """The quickstart names the rule count in prose, OUTSIDE the generated block, so the drift
+    test cannot see it — and it was stale the moment a twelfth rule landed. A number a human
+    types next to a number a generator writes needs the two compared by something."""
+    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text()
+    generated = len(rules())
+    hand = re.findall(r"(\d+) well-formedness rules", readme)
+    assert hand, "the quickstart no longer states a rule count — drop this test or restore it"
+    assert all(int(h) == generated for h in hand), (
+        f"prose says {hand} well-formedness rules, the generator counts {generated}")
+
+
+def test_every_rule_is_produced_inside_checks_py() -> None:
+    """⛔ WHY THE TABLE WAS WRONG, as a check rather than a one-time correction.
+
+    The README's table says it is every rule `coherence_check()` enforces. It is generated from
+    `checks.__all__`, so a finding constructed anywhere ELSE is enforced and unlisted — which is
+    exactly what happened: the recursive-subgraph rule lived in `graph_spec.py`, the table said
+    11, the code enforced 12, and `test_every_check_in_the_module_reaches_the_rules_table` could
+    not notice because it only looks at `check_*` functions that already exist in `checks.py`.
+
+    A completeness claim needs a check that can go red on the NEXT one, not a patch for the last.
+    """
+    root = Path(__file__).resolve().parent.parent / "workflow_workbench"
+    offenders = []
+    for py in sorted(root.glob("*.py")):
+        if py.name == "checks.py":
+            continue
+        for i, line in enumerate(py.read_text().splitlines(), 1):
+            if "CoherenceFinding(" in line and "import" not in line:
+                offenders.append(f"{py.name}:{i}")
+    assert not offenders, (
+        "a finding is constructed outside checks.py, so it is enforced but cannot reach the "
+        f"generated rules table: {offenders}. Move the rule into a `check_*` in checks.py and "
+        "export it; keep the control flow at the call site if it needs any.")
+
+
 def test_no_cell_is_invented_prose() -> None:
     """⛔ The rule that makes both tables trustworthy. If a cell could be hand-written, the table
     could say something the code does not do — the whole failure a derived document removes."""
@@ -124,7 +162,8 @@ def test_needs_strategy_is_derived_and_matches_what_actually_runs() -> None:
     design_only = {r.check for r in rules() if not r.needs_strategy}
     assert "check_transform_edges" in design_only
     assert {"check_bindings", "check_implementations", "check_variable_types",
-            "check_subgraphs"} == {r.check for r in rules() if r.needs_strategy}
+            "check_subgraphs", "check_recursion"} == {r.check for r in rules()
+                                                      if r.needs_strategy}
 
 
 def test_the_authored_part_is_only_the_grouping() -> None:

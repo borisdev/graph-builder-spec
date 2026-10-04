@@ -16,7 +16,13 @@ ROOT = Path(__file__).resolve().parent.parent
 GLOSSARY = ROOT / "docs" / "glossary.md"
 
 #: `[text](... glossary.md#anchor)`, from anywhere, at any relative depth.
-LINK = re.compile(r"\[([^\]]+)\]\(([^)]*glossary\.md)#([a-z0-9-]+)\)")
+#
+# ⛔ The fragment is `[^)]*`, NOT `[a-z0-9-]+`. A character class matching only well-formed
+# slugs makes every MALFORMED link invisible — `#noise_floor`, `#Noise-Floor` and a bare
+# `glossary.md#` were all skipped rather than reported, and those are the shapes a human
+# actually types. A dead-link test blind to the dead links is `.claude/rules/checks.md` in one
+# regex: it passed because it did not touch what breaks.
+LINK = re.compile(r"\[([^\]]+)\]\(([^)#]*glossary\.md)#([^)]*)\)")
 
 
 def _slug(heading: str) -> str:
@@ -59,7 +65,7 @@ def test_internal_cross_references_resolve_too() -> None:
     bare `#anchor` links, which the test above does not match, and they rot the same way."""
     anchors = _anchors()
     text = GLOSSARY.read_text()
-    bare = re.findall(r"\[([^\]]+)\]\(#([a-z0-9-]+)\)", text)
+    bare = re.findall(r"\[([^\]]+)\]\(#([^)]*)\)", text)   # any fragment — see LINK above
     assert bare, "no internal cross-references found — this assertion would pass vacuously"
     dead = [f"[{t}](#{a})" for t, a in bare if a not in anchors]
     assert not dead, f"dead cross-references inside the glossary: {dead}"

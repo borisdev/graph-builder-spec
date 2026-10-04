@@ -32,6 +32,12 @@ export function Panel({
 
   const design = report.design_findings ?? [];
 
+  // ⚠️ Only a NON-EMPTY brief renders. An empty `problem` means nobody wrote one — it does not
+  // mean the stage is easy — so an empty heading claiming otherwise is worse than no section.
+  const brief = picked
+    ? (report.nodes.find((n) => n.id === picked)?.problem ?? "").trim()
+    : "";
+
   return (
     <div className="ws-panel">
       {/* ⚠️ A design with findings must never render as a clean one — including a NOT CHECKED
@@ -46,6 +52,12 @@ export function Panel({
               </li>
             ))}
           </ul>
+        </section>
+      )}
+      {brief && (
+        <section className="ws-brief">
+          <h3>What makes {picked} hard</h3>
+          <p>{brief}</p>
         </section>
       )}
       <section>

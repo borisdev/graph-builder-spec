@@ -150,7 +150,7 @@ class StepSpec:
     name: str
     inputs: tuple[VariableSpec, ...] = ()
     outputs: tuple[VariableSpec, ...] = ()
-    problem: str = ""
+    problem: str = field(default="", kw_only=True)
     """What makes this role HARD — the colocated brief for whoever implements it.
 
     ⛔ The PROBLEM, never the solution. The design owns what must be dealt with; a strategy owns
@@ -165,6 +165,11 @@ class StepSpec:
     ⚠️ Empty is the honest default and means nothing is claimed. It does NOT mean the stage is
     easy — an absent brief and a stage with no judgement in it must not read the same, and
     nothing here can tell them apart.
+
+    ⚠️ **Keyword-only, and that is not cosmetic.** This field was added after `streams`, so a
+    POSITIONAL fourth argument had meant `streams` for a release. `StepSpec("x", (), (), True)`
+    would now assign `True` to `problem` and leave streaming off — a type error nowhere, a
+    silently non-streaming node everywhere. `kw_only` makes the old call keep its old meaning.
     """
     streams: bool = False
     """This role is filled by an async GENERATOR, built with `g.stream` rather than `g.step`.

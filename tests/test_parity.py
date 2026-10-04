@@ -169,6 +169,11 @@ def test_the_docs_use_the_current_api() -> None:
         "check_built_topology": "gone, with the hook it policed",
         "NodeSpec(": "renamed in 0.2.0 — the class is StepSpec; NodeSpec is now the union "
                      "StepSpec | JoinSpec | DecisionSpec. See docs/migration-0.2.md",
+        # ⚠️ The token 0.3.0 actually retired, and it was missing — so this lint's whole
+        # claim ("a skill cannot name a dead method") held for `NodeSpec(` and not for the
+        # rename that shipped in the same release. The three files that legitimately quote
+        # the old call are already in `_NAMES_THE_OLD_API`.
+        ".check(": "renamed in 0.3.0 — it is `coherence_check(...)`. See docs/migration-0.3.md",
     }
     for name, text in _prose_docs(include_migration=False):
         # ⚠️ Only the lines that TALK ABOUT a retirement are skipped — narrow the exception,

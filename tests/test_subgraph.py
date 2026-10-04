@@ -602,9 +602,11 @@ def test_a_subgraph_finding_is_about_the_PARENT_node_the_child_is_bound_to() -> 
 
 
 def test_a_recursive_binding_is_about_the_STRATEGY_not_the_design() -> None:
-    """⚠️ The one finding produced outside `checks.py` — `GraphSpec._check` owns cycle detection
-    because it is the only thing holding the `ancestry`. It is therefore the one most likely to
-    be left untagged, and nothing else here would notice.
+    """⚠️ The only rule whose CALLER holds state it needs — `GraphSpec._coherence_check` passes
+    the `ancestry` and acts on the result by returning, because a cycle must stop the walk. The
+    rule itself is `checks.check_recursion`, which is what lets it reach the generated table; it
+    was produced inside `graph_spec.py` until the README's "every rule" claim turned out to
+    enumerate 11 of 12.
 
     `about` is the strategy because the design is fine: `Parent` and `Child` are both coherent,
     and swapping the strategy is the move that fixes it.
@@ -614,4 +616,4 @@ def test_a_recursive_binding_is_about_the_STRATEGY_not_the_design() -> None:
 
     recursive = [f for f in Parent().coherence_check(loop) if "recursive subgraph binding" in f]
     assert recursive, "the cycle was not detected at all"
-    assert all((f.check, f.about) == ("GraphSpec._coherence_check", "loop") for f in recursive)
+    assert all((f.check, f.about) == ("check_recursion", "loop") for f in recursive)

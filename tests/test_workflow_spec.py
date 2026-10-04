@@ -277,9 +277,13 @@ def test_a_plain_edge_cannot_deliver_something_else():
 
 # ── CoherenceFinding ────────────────────────────────────────────────────────────────────────
 #
-# ⚠️ The 221 tests above are a real oracle for the MESSAGES — they assert substrings, so a
-# reworded finding fails loudly. They cannot say anything about `check` and `about`, which are
-# new and which nothing else would notice being wrong. That is what this section is for.
+# ⚠️ The 221 tests above are a PARTIAL oracle for the MESSAGES. They assert selected
+# substrings, so a reworded finding fails loudly only where the reworded part is one of them —
+# measured: rewriting the tail of `check_reachable`'s "unreachable from START" finding leaves the
+# whole suite green, because the test asserts only `"orphan" in f and "unreachable" in f`. The
+# byte-for-byte diff against the previous release is what covers that claim; this suite does not.
+# And none of them says anything about `check` and `about`, which nothing else would notice being
+# wrong. That is what this section is for.
 
 def test_a_finding_is_still_a_string_everywhere_it_was_one():
     """⛔ THE COMPATIBILITY ORACLE. This is why the design is a `str` subclass and not a
@@ -323,9 +327,25 @@ def test_every_check_tags_its_findings_with_its_own_name():
     produced = {f.check for f in _every_finding_we_can_provoke()}
     assert produced, "no findings were provoked — the assertions below would pass vacuously"
     for name in produced:
-        if name == "GraphSpec._coherence_check":
-            continue        # cycle detection needs `ancestry`; it has no `check_*` function
         assert callable(getattr(c, name, None)), f"`check={name!r}` names no function in checks"
+
+    # ⛔ The assertion above only proves a tag names SOME check. A copy/paste — tagging a
+    # `check_variables` finding `check_reachable` — passes it, which leaves the one field the
+    # whole type exists for untested. So read each check's own SOURCE and require every
+    # `check=` literal inside it to be that function's own name. Exact, needs no fixture per
+    # check, and catches the sites no design we can write happens to provoke.
+    import inspect
+    import re as _re
+    scanned = 0
+    for name in c.__all__:
+        fn = getattr(c, name)
+        if not (callable(fn) and name.startswith("check_")):
+            continue
+        src = inspect.getsource(fn)
+        tags = set(_re.findall(r'check=[\'"]([^\'"]+)[\'"]', src))
+        assert tags <= {name}, f"{name} tags findings {sorted(tags - {name})}"
+        scanned += 1
+    assert scanned >= 10, f"only scanned {scanned} checks — the loop found almost nothing"
 
 
 def test_about_names_something_the_caller_can_look_up():
@@ -335,6 +355,13 @@ def test_about_names_something_the_caller_can_look_up():
     This asserts the INVARIANT instead — an `about` is empty, or it is a name the caller can
     resolve against the design it just handed in. An `about` that names nothing is worse than an
     empty one, because it reads as a handle and is not.
+
+    ⚠️ **Asserted on a FLAT design only, and the gap is known.** A subgraph binding propagates
+    its child's findings unchanged, so their `about` is relative to the CHILD — after
+    `parent.coherence_check(s)` an `about="orphan"` names nothing the caller holds, and cannot be
+    told apart from the same name in a second child. `_Broken()` declares no subgraph, so this
+    test does not reach that case. Qualifying `about` across a boundary changes what the field
+    means and lands with the nested-graph work, not here.
     """
     spec = _Broken()
     resolvable = {n.name for n in (*spec.nodes, *spec.joins, *spec.decisions)}

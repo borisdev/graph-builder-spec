@@ -60,8 +60,13 @@ See [deep embedding](#deep-embedding) for why this is the precondition for every
 A DSL whose constructs build a **data structure** representing the program, rather than directly
 performing the behaviour (which is a *shallow* embedding).
 
-**Why it matters here.** Every capability in this library — checks, diagrams, diffs, battles —
-exists because there is an artifact to read. None of them is possible over a shallow embedding.
+**Why it matters here.** Checks, diagrams and diffs exist because there is an artifact to read;
+none of them is possible over a shallow embedding.
+
+⚠️ **Battles are the exception, and the distinction is the interesting part.** `compare_graphs()`
+runs two ALREADY-BUILT graphs and needs no declaration — so comparing is possible without one.
+What the artifact buys is that `eval_battle` takes exactly ONE `spec`, so both arms provably
+render from the same design. The embedding does not enable the battle; it enables the *fairness*.
 
 ⚠️ **The price is expressiveness.** A deep embedding can only say what its vocabulary has words
 for; `docs/parity.md` is that bill, itemised.

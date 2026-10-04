@@ -74,7 +74,7 @@ def main() -> None:
     spec = ParallelProcessing()
 
     print(f"coherence_check() with no strategy: {spec.coherence_check() or 'clean'}")
-    print(f"check(squares):           {spec.coherence_check(squares) or 'clean'}")
+    print(f"coherence_check(squares):  {spec.coherence_check(squares) or 'clean'}")
     print("  ⚠️ neither says NOT CHECKED. A fan-out design is now checked like any other.\n")
 
     for strategy in (squares, cubes):

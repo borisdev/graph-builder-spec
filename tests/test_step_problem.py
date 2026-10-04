@@ -6,6 +6,26 @@ from workflow_workbench.devserver import spec_payload
 from workflow_workbench.payload import WorkflowReport
 
 
+def test_problem_is_keyword_only_so_the_fourth_positional_still_means_streams() -> None:
+    """⛔ THE REGRESSION THIS FIELD ALREADY CAUSED ONCE. `problem` was inserted BEFORE `streams`
+    as a positional field, so `StepSpec("x", (), (), True)` stopped meaning "a streaming node"
+    and started meaning `problem=True` — no type error anywhere, and a node that silently does
+    not stream. Keyword-only restores the old call's old meaning.
+    """
+    import dataclasses
+
+    v = VariableSpec("v", str)
+    n = StepSpec("x", (v,), (v,), True)
+    assert n.streams is True, "the fourth positional argument no longer means `streams`"
+    assert n.problem == ""
+
+    f = {fld.name: fld for fld in dataclasses.fields(StepSpec)}
+    assert f["problem"].kw_only, "`problem` must stay keyword-only — see the docstring above"
+    assert not f["streams"].kw_only, (
+        "`streams` became keyword-only, which is a SECOND breaking change to the same "
+        "constructor and not what this fix was for")
+
+
 def test_problem_defaults_to_empty_and_is_additive() -> None:
     """Every existing declaration keeps working — the field is new and optional."""
     assert StepSpec("x").problem == ""

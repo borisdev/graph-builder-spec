@@ -61,8 +61,11 @@ no third has been observed.
 
 ### Upgrading
 
-Nothing to do. `uv lock --upgrade-package workflow-workbench` when you want the fields; until
-then a pinned consumer is unaffected.
+**The `check()` → `coherence_check()` rename above is breaking** — see the step above, not this
+paragraph. What needs nothing is the FINDING REPRESENTATION: `CoherenceFinding` is a `str`
+subclass, so every existing `f.startswith(...)`, `"\n".join(findings)` and `f == msg` keeps
+working untouched. `uv lock --upgrade-package workflow-workbench` when you want the fields;
+until then a pinned consumer is unaffected by either change.
 
 ## [0.2.0] — 2026-09-30
 

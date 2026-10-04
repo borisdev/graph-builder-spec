@@ -109,27 +109,20 @@ class GraphSpec:
                *, ancestry: tuple[tuple[type, int], ...]) -> list[CoherenceFinding]:
         """`coherence_check()`, plus the path of (design, strategy) pairs already open above this one.
 
-        ⚠️ This is the ONE place a cycle is detected. `check_subgraphs` deliberately does not
-        also check — two owners of one rule is how a chain ends up either reported twice or, worse,
-        reported by whichever ran first with the other's message.
-
-        ⚠️ `id(strategy)` is safe as an identity key ONLY because every strategy in a chain is
-        reachable from the root strategy's bindings for the whole walk, so none can be collected
-        and have its id reused underneath us.
+        ⚠️ This is the ONE place a cycle is ACTED ON. The rule itself is
+        `checks.check_recursion`, so it reaches the generated rules table like every other; what
+        lives here is the control flow, because a cycle must stop the walk rather than be
+        reported and walked into. `check_subgraphs` deliberately does not also look — two owners
+        of one rule is how a chain ends up either reported twice or, worse, reported by whichever
+        ran first with the other's message.
         """
+        # ⚠️ The identity of THIS (design, strategy) pair, both the cycle key and what gets
+        # appended to `ancestry` for the children below.
         key = (type(self), id(strategy)) if strategy is not None else None
-        if key is not None and key in ancestry:
-            # ⚠️ `check="GraphSpec._coherence_check"` names the producing function, like every other
-            # finding — and here that is honestly not a `check_*` in `checks.py`. Cycle detection
-            # needs the `ancestry` only this method carries, which is why it lives here and why
-            # `check_subgraphs` deliberately does not also do it. `about` is the STRATEGY: the
-            # design is fine, and swapping the strategy is the move.
-            return [CoherenceFinding(
-                f"recursive subgraph binding: {self.name or type(self).__name__!r} with strategy "
-                f"{strategy.name!r} appears inside its own subgraph chain. Rendering it would "
-                f"build child graphs until the stack ran out — a design cannot implement one of "
-                f"its own nodes with itself.",
-                check="GraphSpec._coherence_check", about=strategy.name)]
+        if strategy is not None:
+            cycle = checks.check_recursion(self, strategy, ancestry)
+            if cycle:
+                return cycle        # ⛔ RETURN, not append: recursing would exhaust the stack.
 
         # ⚠️ `nodes` is STEPS ONLY — the roles a strategy fills. `NodeSpec` is every declared
         # box. Conflating the two is how a join ends up demanding an implementation, or an
