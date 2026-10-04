@@ -457,7 +457,8 @@ def check_subgraphs(parent: Any, strategy: StrategySpec,
                                    declared types is not pedantry — it is the precondition that
                                    makes sharing them safe to state.
 
-    Cycles are NOT checked here. `GraphSpec._check` owns that, so there is exactly one place that
+    Cycles are NOT checked here. `check_recursion` is the rule and `GraphSpec._coherence_check`
+    is its one caller, so there is exactly one place that
     decides whether a chain has closed on itself.
     """
     findings: list[CoherenceFinding] = []

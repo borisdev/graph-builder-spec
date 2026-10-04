@@ -78,6 +78,30 @@ _COUNT = re.compile(r"\b(\d+|" + "|".join(_WORDS) + r")\s+"
                     r"(?:well-formedness rules|check_\* functions|check functions)\b")
 
 
+def test_every_dotted_reference_in_a_docstring_resolves() -> None:
+    """⛔ A docstring named `GraphSpec._check` for two releases after the method became
+    `_coherence_check`.
+
+    An internal method reference in prose rots silently: `test_the_docs_use_the_current_api`
+    guards the PUBLIC tokens in markdown, and a backticked `Class.attr` inside a Python docstring
+    is invisible to it. This is narrow on purpose — only `Class.attr` where `Class` is something
+    we export — because that is the shape that has actually gone stale.
+    """
+    import workflow_workbench as ww
+
+    root = Path(__file__).resolve().parent.parent / "workflow_workbench"
+    exported = {n: getattr(ww, n) for n in ww.__all__ if isinstance(getattr(ww, n), type)}
+    dead, seen = [], 0
+    for py in sorted(root.glob("*.py")):
+        for cls, attr in re.findall(r"`(" + "|".join(exported) + r")\.([A-Za-z_][A-Za-z0-9_]*)`",
+                                    py.read_text()):
+            seen += 1
+            if not hasattr(exported[cls], attr):
+                dead.append(f"{py.name}: {cls}.{attr}")
+    assert seen, "no dotted references found at all — the assertion below would pass vacuously"
+    assert not dead, f"docstrings name attributes that do not exist: {dead}"
+
+
 def test_no_prose_anywhere_states_a_rule_count_the_generator_disagrees_with() -> None:
     """⛔ THIS TEST'S OWN FIRST VERSION MISSED THREE SITES, and that is the lesson in it.
 
