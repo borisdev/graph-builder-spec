@@ -309,6 +309,23 @@ def test_blocking_is_derived_and_not_checked_is_the_only_non_blocking_kind():
     assert blocking([CoherenceFinding(f"{NOT_CHECKED} — x", check="c")]) == []
 
 
+def test_blocking_cannot_be_set_to_disagree_with_the_filter():
+    """⛔ It is DERIVED, and as a writable slot it was documented as derived while
+    `finding.blocking = False` made it disagree with `blocking()` on the same message. Two
+    readings of one fact is what this type exists to remove, so it is a read-only property."""
+    import pytest
+
+    f = CoherenceFinding("node 'x' is unreachable from START", check="check_reachable")
+    assert f.blocking
+    with pytest.raises(AttributeError):
+        f.blocking = False                     # type: ignore[misc]
+    # and the two readings still agree, which is the property the field is for
+    assert f.blocking is (blocking([f]) == [f])
+
+    gap = CoherenceFinding(f"{NOT_CHECKED} — we could not look", check="c")
+    assert not gap.blocking and blocking([gap]) == []
+
+
 def test_blocking_agrees_with_the_comprehension_it_replaces():
     """`render()`, `eval_battle` and the devserver all used the same `startswith` comprehension.
     They call `blocking()` now, so the two must give the identical verdict on the same input —

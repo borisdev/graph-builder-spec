@@ -26,8 +26,13 @@ house naming rule exists to prevent. `coherence_check()` grounds it.
 `design_check()` was considered and rejected: `spec` *is* the design, so `spec.design_check()`
 restates its own receiver.
 
-**Unchanged:** the eleven `check_*` functions, and the `check` field on a finding — both name an
-individual check, which is what they still are.
+**Unchanged:** the existing `check_*` functions, and the `check` field on a finding — both name
+an individual check, which is what they still are.
+
+**Added, and it is the twelfth:** `check_recursion`. The recursive-subgraph rule was enforced
+inside `graph_spec.py`, so the generated rules table could not see it and said 11 while the code
+enforced 12. The rule moved into `checks.py` and is exported; the CALL SITE did not move, because
+a cycle has to stop the walk rather than be reported and walked into.
 
 ### Added — `coherence_check()` returns `CoherenceFinding`, not a bare `str`
 

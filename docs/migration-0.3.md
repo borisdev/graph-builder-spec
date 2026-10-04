@@ -22,12 +22,16 @@ sed -i 's/\.check(/.coherence_check(/g' <files>
 pytest -q
 ```
 
+⚠️ **One function is NEW in this release:** `check_recursion`, which is the recursive-subgraph
+rule made public. It was previously enforced inside `graph_spec.py` and therefore missing from the
+generated rules table. Nothing you call changes; the rule count goes 11 → 12.
+
 **Unchanged, and deliberately so:**
 
 | | |
 |---|---|
-| `check_names`, `check_reachable`, … the eleven functions | unchanged — each *is* one check |
-| `CoherenceFinding.check` | unchanged — it names which of those eleven produced the finding |
+| `check_names`, `check_reachable`, … the existing functions | unchanged — each *is* one check |
+| `CoherenceFinding.check` | unchanged — it names which of them produced the finding |
 | `render()`, `diagram()`, `diff_diagram()`, `varies()`, `eval_battle()` | unchanged |
 
 ### Why

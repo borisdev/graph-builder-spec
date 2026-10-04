@@ -70,16 +70,47 @@ def test_every_check_in_the_module_reaches_the_rules_table() -> None:
         "a check_* function is missing from checks.__all__, so the table cannot see it")
 
 
-def test_the_hand_written_count_in_the_prose_matches_the_generated_table() -> None:
-    """The quickstart names the rule count in prose, OUTSIDE the generated block, so the drift
-    test cannot see it — and it was stale the moment a twelfth rule landed. A number a human
-    types next to a number a generator writes needs the two compared by something."""
-    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text()
+_WORDS = {"ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14}
+
+#: A count of CHECKS stated in prose. Deliberately NOT a bare `rules` — `docs/ladder.md` says
+#: "eleven rungs" and that is a different eleven.
+_COUNT = re.compile(r"\b(\d+|" + "|".join(_WORDS) + r")\s+"
+                    r"(?:well-formedness rules|check_\* functions|check functions)\b")
+
+
+def test_no_prose_anywhere_states_a_rule_count_the_generator_disagrees_with() -> None:
+    """⛔ THIS TEST'S OWN FIRST VERSION MISSED THREE SITES, and that is the lesson in it.
+
+    It scanned ONE phrasing in ONE file. Moving the recursive-subgraph rule into `checks.py`
+    took the count 11 → 12 and left `11 [well-formedness rules](...)` in the README overview,
+    "the eleven `check_*` functions" in the CHANGELOG and two more in `docs/migration-0.3.md` —
+    none of which matched `(\\d+) well-formedness rules`, because a markdown link sits between
+    the number and the noun. A guard against drift that covers one spelling in one file is the
+    under-coverage it was written to prevent.
+
+    So: every prose file, digits AND number-words, markdown links stripped first.
+    """
+    root = Path(__file__).resolve().parent.parent
     generated = len(rules())
-    hand = re.findall(r"(\d+) well-formedness rules", readme)
-    assert hand, "the quickstart no longer states a rule count — drop this test or restore it"
-    assert all(int(h) == generated for h in hand), (
-        f"prose says {hand} well-formedness rules, the generator counts {generated}")
+    paths = [root / "README.md", root / "CHANGELOG.md",
+             *sorted((root / "docs").glob("*.md")),
+             *sorted((root / ".claude").rglob("*.md"))]
+    stale, seen = [], 0
+    for p in paths:
+        if not p.exists():
+            continue
+        # `11 [well-formedness rules](url)` -> `11 well-formedness rules`, and
+        # "eleven `check_*` functions" -> "eleven check_* functions". BOTH normalisations are
+        # load-bearing: a markdown link hid three of these and a backtick hid the fourth.
+        flat = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", p.read_text()).replace("`", "")
+        for n in _COUNT.findall(flat):
+            seen += 1
+            val = _WORDS.get(n.lower(), None) or int(n)
+            if val != generated:
+                stale.append(f"{p.name}: {n}")
+    assert seen, "no prose states a check count at all — drop this test or restore one"
+    assert not stale, (f"prose states a check count the generator disagrees with "
+                       f"(it counts {generated}): {stale}")
 
 
 def test_every_rule_is_produced_inside_checks_py() -> None:

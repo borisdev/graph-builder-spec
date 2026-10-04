@@ -70,20 +70,28 @@ class CoherenceFinding(str):
                    `name`; "" for a finding about the whole design
         blocking   derived: False for a stated gap (`NOT CHECKED — …`), True for a defect.
                    A bool, not an enum — two states, and no third has been observed.
+
+    ⚠️ `blocking` is a READ-ONLY property, not a slot. As a writable attribute it was documented
+    as derived and guaranteed to agree with `blocking()` while `finding.blocking = False` made it
+    disagree on the same message — two readings of one fact, which is the exact drift this type
+    exists to remove. Deriving it on read means they cannot differ.
     """
 
-    __slots__ = ("check", "about", "blocking")
+    __slots__ = ("check", "about")
 
     check: str
     about: str
-    blocking: bool
 
     def __new__(cls, message: str, *, check: str, about: str = "") -> CoherenceFinding:
         self = super().__new__(cls, message)
         self.check = check
         self.about = about
-        self.blocking = _is_blocking(message)
         return self
+
+    @property
+    def blocking(self) -> bool:
+        """Derived from the message by the ONE definition `blocking()` also calls."""
+        return _is_blocking(self)
 
 
 def blocking(findings: Iterable[_F]) -> list[_F]:

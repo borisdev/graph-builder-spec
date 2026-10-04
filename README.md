@@ -31,7 +31,7 @@ Four problems, and the same declaration answers all four:
 
 | | |
 |---|---|
-| **An agent's output works and is incoherent.** Each piece is locally fine; the whole does not add up. | `coherence_check()` — 11 [well-formedness rules](docs/glossary.md#well-formedness-rule), 7 needing nothing implemented |
+| **An agent's output works and is incoherent.** Each piece is locally fine; the whole does not add up. | `coherence_check()` — 12 [well-formedness rules](docs/glossary.md#well-formedness-rule), 7 needing nothing implemented |
 | **A reasoning strategy cannot be asserted correct — only compared.** There is no right answer to diff against, so "better" is an empirical question. | [`eval_battle()`](docs/glossary.md#battle) — same cases, same evaluators, plus a replicate arm as the [noise floor](docs/glossary.md#noise-floor) |
 | **Complexity grows unless pieces are reused.** Two arms that differ in one stage should say so, not be two files. | the [data language](docs/glossary.md#deep-embedding): declare a role once, bind it many ways; `SubgraphBinding` reuses a whole child design as one node |
 | **You cannot see what you built.** | `diagram()` and `diff_diagram()`, from the declaration alone |

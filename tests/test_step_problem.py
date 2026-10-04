@@ -57,3 +57,21 @@ def test_an_absent_brief_is_distinguishable_from_a_written_one() -> None:
     assert StepSpec("a").problem == ""
     assert StepSpec("b", problem="x").problem == "x"
     assert StepSpec("a").problem != "none", "absence must not be spelled as a claim"
+
+
+def test_a_subgraph_binding_cannot_also_be_unbound_or_skipped() -> None:
+    """⛔ `subgraph=True` claims a whole child design fills this role. `unbound` says nobody
+    wired it and `skipped` says this arm declined to run it — both the opposite claim. The
+    payload accepted the combination, so the viewer could draw a composed badge on a stage with
+    nothing behind it, which is `.claude/rules/case-build.md` §3: a check that was skipped must
+    never render as a value.
+    """
+    import pytest
+    from pydantic import ValidationError
+
+    from workflow_workbench.payload import Binding
+
+    assert Binding(impl="child::thorough", subgraph=True).subgraph
+    for bad in ({"impl": None, "unbound": True}, {"impl": "x", "skipped": True}):
+        with pytest.raises(ValidationError, match="subgraph"):
+            Binding(subgraph=True, **bad)

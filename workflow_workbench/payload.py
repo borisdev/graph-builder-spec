@@ -97,6 +97,11 @@ class Binding(BaseModel):
         if self.impl is None and not self.unbound:
             raise ValueError("a binding with no `impl` must set unbound=True, or it reads as a "
                              "stage nobody has an opinion about")
+        if self.subgraph and (self.unbound or self.skipped):
+            raise ValueError("a binding cannot be a subgraph AND unbound/skipped — `subgraph` "
+                             "claims a whole child design fills this role, which is the opposite "
+                             "of nobody wiring it or this arm declining to run it. The viewer "
+                             "would draw a composed badge on a stage with nothing behind it")
         return self
 
 
