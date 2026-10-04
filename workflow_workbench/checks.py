@@ -93,6 +93,24 @@ class CoherenceFinding(str):
         """Derived from the message by the ONE definition `blocking()` also calls."""
         return _is_blocking(self)
 
+    def __reduce__(self) -> tuple[Any, tuple[str, str, str]]:
+        """⛔ WITHOUT THIS, `pickle`, `copy` and `deepcopy` ALL RAISE.
+
+        `str`'s inherited reducer rebuilds a subclass as `cls(message)`, and `check` is
+        keyword-only and required — so every finding raised `TypeError: __new__() missing 1
+        required keyword-only argument` on any of the three. Findings were plain pickleable
+        strings before this type existed, so that broke process-pool and cache transport while
+        the compatibility oracle stayed green: its list of "the five string operations that must
+        not move" simply did not include them. An incomplete oracle is the failure here, not a
+        missing feature — `.claude/rules/checks.md`.
+        """
+        return _rebuild_finding, (str(self), self.check, self.about)
+
+
+def _rebuild_finding(message: str, check: str, about: str) -> CoherenceFinding:
+    """`CoherenceFinding.__reduce__`'s callable. Module-level because pickle resolves it by name."""
+    return CoherenceFinding(message, check=check, about=about)
+
 
 def blocking(findings: Iterable[_F]) -> list[_F]:
     """The findings that STOP a render — everything that is not a stated gap.

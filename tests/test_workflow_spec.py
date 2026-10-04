@@ -309,6 +309,32 @@ def test_blocking_is_derived_and_not_checked_is_the_only_non_blocking_kind():
     assert blocking([CoherenceFinding(f"{NOT_CHECKED} — x", check="c")]) == []
 
 
+def test_a_finding_survives_pickle_and_copy_like_the_plain_string_it_replaced():
+    """⛔ THE COMPATIBILITY ORACLE WAS INCOMPLETE, and this is the hole it left.
+
+    `str`'s inherited reducer rebuilds a subclass as `cls(message)`. `check` is keyword-only and
+    required, so `pickle`, `copy` and `deepcopy` ALL raised `TypeError` — on a value that was a
+    plain, pickleable string one release ago. Nothing noticed, because the oracle enumerated five
+    string operations and these three were not among them. A list of what must not move is only
+    as good as the list.
+    """
+    import copy
+    import pickle
+
+    f = CoherenceFinding("node 'orphan' is unreachable from START", check="check_reachable",
+                         about="orphan")
+    for rebuilt in (pickle.loads(pickle.dumps(f)), copy.copy(f), copy.deepcopy(f)):
+        assert type(rebuilt) is CoherenceFinding
+        assert rebuilt == str(f)                       # byte-for-byte, like every other site
+        assert (rebuilt.check, rebuilt.about) == ("check_reachable", "orphan")
+        assert rebuilt.blocking is f.blocking          # derived, so it must survive too
+
+    # a whole list of them, which is how a process pool would actually move findings
+    many = [f, CoherenceFinding(f"{NOT_CHECKED} — we could not look", check="c")]
+    assert [str(x) for x in pickle.loads(pickle.dumps(many))] == [str(x) for x in many]
+    assert blocking(pickle.loads(pickle.dumps(many))) == [f]
+
+
 def test_blocking_cannot_be_set_to_disagree_with_the_filter():
     """⛔ It is DERIVED, and as a writable slot it was documented as derived while
     `finding.blocking = False` made it disagree with `blocking()` on the same message. Two
