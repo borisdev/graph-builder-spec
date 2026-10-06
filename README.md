@@ -5,6 +5,13 @@
 silently dropped, two wires crossed between values of the same type, a stage nobody implemented.
 It runs, it returns something of the right shape, and nothing downstream can tell.
 
+The second one is worth making concrete, because it is the failure we have actually hit. A real
+pipeline carried three values — `given_graph`, `cited_given_graph`, `expanded_graph` — all the
+**same Python type** and all meaning different things: what the user said, what the literature
+backs, and what was added on top. A type checker cannot tell them apart. Nothing downstream can
+either. Naming each value in the declaration is what makes crossing two of them a finding instead
+of a plausible answer.
+
 Workflow Workbench is a [declaration layer](docs/glossary.md#declaration-layer) over Pydantic Graph Builder. You write the workflow's
 shape and its data contracts as **data**, before any step exists — which is what makes that class
 of defect findable:
@@ -148,6 +155,13 @@ a design is data — a diagram, a coherence check and a diff with **nothing impl
 `eval_battle` also scores one strategy against itself; that replicate is the noise floor a real
 delta has to clear. It is `0.00` here because both implementations are deterministic — a `0.00`
 floor on a model-backed arm usually means a cache answered the second run.
+
+⚠️ **Taking that floor is currently YOUR job, and that is a real gap.** `eval_battle` labels a
+replicate when you hand it the same strategy twice; it does not run one for you. So a battle can
+report arm B ahead by 0.08 while the same arm scores ±0.125 against itself — which is not
+hypothetical, it is a measured result from the first corpus this was used on, where one metric's
+floor (6.0) was larger than its mean (5.0). **A delta inside the floor is not a result**, and
+nothing yet stops you reporting one.
 
 The whole example: [`examples/greeting.py`](examples/greeting.py).
 
@@ -331,6 +345,24 @@ spec.diagram()    # -> mermaid for the specification
 
 This is the stage a built `Graph` cannot reach: a `Graph` needs every function to exist first.
 
+### ⛔ A strategy is an ALGORITHM, not an environment
+
+The single most likely way to misuse this. **Fake services versus production services are not two
+strategies.** Infrastructure goes in `ctx.deps`, where Pydantic Graph already puts it.
+
+```
+deps        a fake UMLS client vs the real one; a stub LLM vs a live one; a local file vs a service
+strategy    joint vs staged extraction; exact-triple vs neighbourhood discovery; compact vs full
+```
+
+The test is whether the two arms **deserve to be evaluated on the same cases**. Two
+implementations of one algorithm do. A fake and a real client do not — the fake exists so the
+real one's cost is not paid in a test, and "the fake scored worse" is not a finding about
+anything.
+
+Bind an environment as a strategy and the battle reports a difference that is real, meaningless,
+and indistinguishable from the one you were looking for.
+
 ### 3. Implement the steps, then bind them as named strategies
 
 The step bodies are ordinary Pydantic Graph steps — nothing in them refers to this library:
@@ -402,6 +434,52 @@ battle = eval_battle(spec, trim_only, normalize_spaces, dataset())  # the compar
 `eval_battle` takes one `spec` and two strategies, so both arms render from the same nodes, edges
 and types. There is nowhere to put a second design.
 
+## When does a stage become a nested graph?
+
+A step can be implemented by a whole child design rather than a function. The useful question is
+when to do that, and the tempting answer is wrong.
+
+**The tempting answer:** *"if you cannot say what a good implementation looks like, it is not a
+step — it is a sub-design."* That reads well and it conflates two different situations:
+
+| can you state the objective? | can you settle it by reading the code? | |
+|---|---|---|
+| **no** | — | **not ready to be anything.** Go write the objective. |
+| yes | yes | **a step.** A function; review is the oracle. |
+| yes | **no** | **a sub-design.** Give it a boundary and battle it. |
+
+The slogan merges rows 1 and 3 — and row 1 is the dangerous one, because a boundary plus an
+evaluation over an *unstated* objective still produces a number, and a number reads as signal.
+Decomposition cannot repair an objective nobody wrote down.
+
+**`StepSpec.problem` is how you leave row 1.** Non-empty means somebody stated what this stage is
+for. Empty means nobody wrote one — never that the stage is easy.
+
+A worked case: resolving a medical term to an ontology id looked like one stage and is two.
+Generating candidate ids is a **recall** problem; choosing among them is a **precision** problem.
+They fail for different reasons, so a single score averages two unrelated failures and tells you
+to fix the wrong half. Two stages, two scores, and the boundary is what makes the second score
+exist at all.
+
+### ⛔ There is no "LLM node" type, deliberately
+
+The obvious request is a node subtype that forces richer fields — a problem, a rubric, its own
+evaluation — for stages backed by a model. It is the wrong mechanism for three reasons:
+
+- **It declares the answer to the question a battle asks.** The whole point is that one role takes
+  an LLM arm *and* a deterministic arm. Type the role as an LLM node and the deterministic arm is
+  illegal by construction.
+- **Whether a stage calls a model is a fact about the implementation**, not about the role. It
+  belongs to the strategy, which is where it already is.
+- **Forcing prose destroys the signal it was added for.** A required brief means every node has a
+  sentence, and the ones written to satisfy a type checker are indistinguishable from the ones
+  written because somebody thought.
+
+**Richness follows the boundary, not the node type.** A stage that deserves a problem, a rubric
+and its own evaluation is a sub-design — and a graph already has all three, because a graph has a
+declared public boundary you can build a dataset against. That is the one thing a `StepSpec` does
+not have.
+
 ## Working with a coding agent
 
 The specification is the reviewable artifact. Review the diagram and the contracts, and the
@@ -426,6 +504,25 @@ check's docstring in [`checks.py`](workflow_workbench/checks.py) — one place, 
 This section used to repeat all of them in a hand-written table and had already drifted to 10 of
 12; a test now refuses a second table of check names anywhere outside the generated block.
 
+Two cases worth keeping, because both type-checked and both were wrong:
+
+- a retrieval step returned edges **without the concepts those edges point at**, so every id
+  dangled. The declared type was satisfied; the value was unusable.
+- a store query returned subject and object **the wrong way round**. Same type, same shape, and
+  it silently returned nothing against a real 6.9 GB index — which reads as "no evidence found",
+  the most plausible wrong answer available.
+
+⚠️ **And the uncomfortable one, from this repo's own review history.** Across five rounds of
+review on one change, **every single finding was a check that was narrower than its claim** — not
+code that was wrong. The dead-link test skipped malformed links. The table that said "every rule"
+listed 10 of 12. The retired-API lint had no token for the method that release removed. The
+compatibility oracle enumerated five string operations and omitted the three that broke. A UI
+test drove one of three render surfaces.
+
+The code was mostly right. **The things asserting it was right were the defects.** For a library
+whose product is checks, that is the failure mode to expect in your own use of it: a check that
+looks authoritative because it is specific, and is specific about the wrong thing.
+
 All of that is **structural**. None of it says the workflow produces good answers: `trim_only`
 passes every one of those and gets half the cases wrong. Structural consistency is what a
 specification guarantees; behaviour is what the battle is for.
@@ -443,6 +540,37 @@ specification guarantees; behaviour is what the battle is for.
 
 Row by row, with their code beside ours: [`docs/parity.md`](docs/parity.md).
 
+## An example teaches the mechanism. A pattern has been battled.
+
+The ambition is that reusable designs accumulate — the library supplies the grammar, you grow the
+vocabulary. The hazard is that "pattern" becomes whatever somebody wrote six paragraphs about, so
+the bar here is checkable rather than literary. A **pattern** is a reusable design that:
+
+1. is importable by name — a graph plus its strategy, not a script that runs top to bottom;
+2. ships a `Dataset` and at least two strategies, so `eval_battle` runs on it;
+3. **has its noise floor recorded.**
+
+(3) is the one that bites. A pattern claiming an arrangement helps, with no floor behind the
+claim, is the same mistake as reporting a 0.08 delta against a 0.125 floor — with a grander name
+on it.
+
+⛔ **By that bar this repo has zero patterns today, and that is the honest state.** `greeting.py`
+has a battle and says outright it is not contestable. `contestable.py` has a test forbidding it
+from printing a score. There is no registry and no `Pattern` type, because there is nothing to put
+in one yet — the definition is written down so the first real one has a bar to clear.
+
+### ⚠️ Two names we expect to change
+
+Proposals, not decisions — they are tracked, not quietly pending:
+
+- **`SubgraphBinding`.** In graph theory a *subgraph* is a subset of a graph's own vertices and
+  edges. A child design is not that: it is a separate graph whose result substitutes for one node.
+  "Nested graph" is accurate; "subgraph" is a borrowed word bent to fit.
+- **`blocking` as a bool.** Two states and no third had been observed when it was chosen. A third
+  has since been observed — near-duplicate *names* are mechanically detectable and are a smell
+  rather than a provable defect, so they do not belong among findings where every one is a defect.
+  The likely answer is a separate check with its own exit code, not a widened enum.
+
 ## More
 
 | | |
@@ -459,6 +587,21 @@ Downstream of community requests for
 [reusable/extensible nodes](https://github.com/pydantic/pydantic-ai/issues/798) and
 [reusable subgraphs](https://github.com/pydantic/pydantic-ai/issues/3901) — complementary to
 native Pydantic Graph, not a proposal to change it.
+
+## Where this is going
+
+Stated because the gap between what is built and what is intended should be readable, not
+inferred. Tracked as issues, not promised here.
+
+| | |
+|---|---|
+| **a flagship example that earns the library** | one graph IR in, competing reports out — four stages that are each a judgement call, two strategies differing in one. `contestable.py` is a placeholder for this shape with the nouns marked as stand-ins. |
+| **`eval_battle` takes its own noise floor** | so a delta inside the floor cannot be reported as a result |
+| **a problem brief on `GraphSpec`, not only on `StepSpec`** | a reusable design has its own problem, separate from the role it happens to fill |
+| **the nested-graph rename** | see the naming note above |
+
+Not planned: a rubric field on a node, an advisory severity, or a node subtype for model-backed
+stages. Each was asked for and each is answered above by a boundary instead of a field.
 
 ## Licence
 
