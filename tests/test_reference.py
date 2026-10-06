@@ -75,8 +75,11 @@ _WORDS = {"ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14}
 
 #: A count of CHECKS stated in prose. Deliberately NOT a bare `rules` — `docs/ladder.md` says
 #: "eleven rungs" and that is a different eleven.
+#: ⚠️ `rules` is in here because a hand-written "All 12 rules" sat in a <details> summary
+#: OUTSIDE the generated markers — so `reference --write` could not update it and this test did
+#: not match it. Two phrasings covered, and the stale one was a third.
 _COUNT = re.compile(r"\b(\d+|" + "|".join(_WORDS) + r")\s+"
-                    r"(?:well-formedness rules|check_\* functions|check functions)\b")
+                    r"(?:well-formedness rules|check_\* functions|check functions|rules)\b")
 
 
 def test_write_does_not_announce_success_on_a_partial_write() -> None:
@@ -131,11 +134,26 @@ def test_the_readme_shows_the_pydantic_graph_lineage() -> None:
     Required by name because a paragraph nothing holds in place is the first thing a prune
     deletes, and the prune is this same change.
     """
-    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text()
+    root = Path(__file__).resolve().parent.parent
+    readme = (root / "README.md").read_text()
     for needed in ("their_hello.py", "visualize_graph", "This is **their** example"):
         assert needed in readme, (
             f"the README no longer shows the Pydantic Graph lineage ({needed!r} is gone). "
             "Drop this test on purpose, or restore it.")
+
+    # ⛔ THE HALF THAT WAS MISSING, and it is why the first version passed on a FALSE table.
+    # Asserting the words are present says nothing about whether they are true: the row for
+    # `their_hello.py` claimed it contains `step_a`/`step_b`, which is upstream's shape and NOT
+    # what that file holds — it is already a greeting adaptation whose steps are `pick` and
+    # `compose`. A lineage claim has to be checked against the file it names.
+    control = (root / "examples" / "ladder" / "their_hello.py").read_text()
+    row = next(ln for ln in readme.splitlines() if "their_hello.py" in ln and ln.startswith("|"))
+    for step in ("pick", "compose"):
+        assert f"`{step}`" in row, f"the control's row no longer names its real step {step!r}"
+        assert f"def {step}(" in control, f"{step!r} is not a step in their_hello.py any more"
+    assert "step_a" not in row, (
+        "the control's row attributes upstream's `step_a`/`step_b` to their_hello.py, which is "
+        "an adaptation and does not contain them")
 
 
 def test_the_readme_holds_no_second_table_of_check_names() -> None:

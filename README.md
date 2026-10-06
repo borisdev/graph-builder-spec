@@ -95,8 +95,9 @@ so the difference you are looking at is the declaration layer and nothing else:
 
 | | step 1 | step 2 |
 |---|---|---|
-| **theirs** — [`their_hello.py`](examples/ladder/their_hello.py), no workbench in the file | `step_a` → `10` | `step_b` → `f'Result: {ctx.inputs}'` |
-| **ours** — [`greeting.py`](examples/greeting.py) | `normalize` → a clean name | `compose` → `f'Hello, {name}!'` |
+| **upstream**, unchanged — their [`visualize_graph.py`](https://pydantic.dev/docs/ai/graph/builder/) | `step_a` → `10` | `step_b` → `f'Result: {ctx.inputs}'` |
+| **the control** — [`their_hello.py`](examples/ladder/their_hello.py): upstream's shape, a greeting instead of a number, and no workbench in the file | `pick` → `"Hello"` | `compose` → `f"{ctx.inputs}, {ctx.state.name}!"` |
+| **ours** — [`greeting.py`](examples/greeting.py), the same workflow declared | `normalize` → a clean name | `compose` → `f"Hello, {name}!"` |
 
 Theirs is fine, and that is the point of keeping it: one graph with one implementation per step
 runs perfectly well like that. What it cannot do is check or draw itself before the steps are
@@ -213,7 +214,7 @@ missed.
 ## What `coherence_check()` enforces
 
 <details>
-<summary><strong>All 12 rules — generated from each check's own docstring</strong></summary>
+<summary><strong>Every rule — generated from each check's own docstring</strong></summary>
 
 <!-- rules:start -->
 **12 rules.** `coherence_check()` returns one finding per violation and an empty list for a clean design; `render()` refuses on any finding that blocks.
@@ -571,7 +572,7 @@ Proposals, not decisions — they are tracked, not quietly pending:
 | [`docs/parity.md`](docs/parity.md) | every Pydantic Graph builder feature, declarable or not |
 | [`docs/how-it-runs.md`](docs/how-it-runs.md) | their executor from the source, with a probe behind every claim |
 | [`examples/greeting.py`](examples/greeting.py) | the walkthrough above; beside it a counter, a fan-out, subgraphs, extraction |
-| [`examples/ladder/their_hello.py`](examples/ladder/their_hello.py) | the control — Pydantic Graph's own smallest program, no workbench in the file |
+| [`examples/ladder/their_hello.py`](examples/ladder/their_hello.py) | the control — their smallest program's SHAPE, adapted to a greeting, with no workbench in the file |
 | [`examples/contestable.py`](examples/contestable.py) | four judgement-call stages, two strategies, nothing implemented and no score |
 
 Downstream of community requests for
