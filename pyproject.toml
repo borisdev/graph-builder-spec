@@ -1,7 +1,7 @@
 [project]
 name = "workflow-workbench"
 version = "0.3.0"
-description = "One fixed graph design, many competing implementations — checked, diagrammed, and battled on Pydantic Evals"
+description = "A declaration layer over Pydantic Graph Builder."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
