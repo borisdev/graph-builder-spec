@@ -5,12 +5,11 @@
 silently dropped, two wires crossed between values of the same type, a stage nobody implemented.
 It runs, it returns something of the right shape, and nothing downstream can tell.
 
-The second one is worth making concrete, because it is the failure we have actually hit. A real
-pipeline carried three values — `given_graph`, `cited_given_graph`, `expanded_graph` — all the
-**same Python type** and all meaning different things: what the user said, what the literature
-backs, and what was added on top. A type checker cannot tell them apart. Nothing downstream can
-either. Naming each value in the declaration is what makes crossing two of them a finding instead
-of a plausible answer.
+The second one is worth making concrete, because it is the one a type checker cannot help with.
+The example below carries `raw_name` and `clean_name` — **both `str`**. Wire the raw one into the
+step that composes the greeting and nothing complains: right type, right shape, and the
+normalization stage silently stops mattering. Declaring each value by NAME, not just by type, is
+what turns that into a finding.
 
 Workflow Workbench is a [declaration layer](docs/glossary.md#declaration-layer) over Pydantic Graph Builder. You write the workflow's
 shape and its data contracts as **data**, before any step exists — which is what makes that class
@@ -351,8 +350,8 @@ The single most likely way to misuse this. **Fake services versus production ser
 strategies.** Infrastructure goes in `ctx.deps`, where Pydantic Graph already puts it.
 
 ```
-deps        a fake UMLS client vs the real one; a stub LLM vs a live one; a local file vs a service
-strategy    joint vs staged extraction; exact-triple vs neighbourhood discovery; compact vs full
+deps        a fake search client vs the real one; a stub model vs a live one; a file vs a service
+strategy    one call vs two; extract-then-verify vs extract-only; a wide search vs a narrow one
 ```
 
 The test is whether the two arms **deserve to be evaluated on the same cases**. Two
@@ -455,11 +454,11 @@ Decomposition cannot repair an objective nobody wrote down.
 **`StepSpec.problem` is how you leave row 1.** Non-empty means somebody stated what this stage is
 for. Empty means nobody wrote one — never that the stage is easy.
 
-A worked case: resolving a medical term to an ontology id looked like one stage and is two.
-Generating candidate ids is a **recall** problem; choosing among them is a **precision** problem.
-They fail for different reasons, so a single score averages two unrelated failures and tells you
-to fix the wrong half. Two stages, two scores, and the boundary is what makes the second score
-exist at all.
+**The test that actually decides it:** does this stage have ONE failure mode or two? Anything
+that retrieves and then chooses has two — missing a candidate is a *recall* failure, picking the
+wrong one from a good set is a *precision* failure, and they have different causes and different
+fixes. One score over both averages them and points you at the wrong half. Two boundaries, two
+scores, and the second score only exists because the boundary does.
 
 ### ⛔ There is no "LLM node" type, deliberately
 
@@ -504,15 +503,7 @@ check's docstring in [`checks.py`](workflow_workbench/checks.py) — one place, 
 This section used to repeat all of them in a hand-written table and had already drifted to 10 of
 12; a test now refuses a second table of check names anywhere outside the generated block.
 
-Two cases worth keeping, because both type-checked and both were wrong:
-
-- a retrieval step returned edges **without the concepts those edges point at**, so every id
-  dangled. The declared type was satisfied; the value was unusable.
-- a store query returned subject and object **the wrong way round**. Same type, same shape, and
-  it silently returned nothing against a real 6.9 GB index — which reads as "no evidence found",
-  the most plausible wrong answer available.
-
-⚠️ **And the uncomfortable one, from this repo's own review history.** Across five rounds of
+⚠️ **The uncomfortable case, and it is from this repo's own review history.** Across five rounds of
 review on one change, **every single finding was a check that was narrower than its claim** — not
 code that was wrong. The dead-link test skipped malformed links. The table that said "every rule"
 listed 10 of 12. The retired-API lint had no token for the method that release removed. The
