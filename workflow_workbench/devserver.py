@@ -238,7 +238,10 @@ function render(){
   // table — every layer at once, so the toggle is a comparison not a slideshow
   let t='<table><tr><th>stage</th>'+D.layers.map(l=>`<th>${esc(l.name)}</th>`).join('')+'</tr>';
   D.nodes.forEach(n=>{
-    t+=`<tr><td class="mono">${esc(n.id)}</td>`;
+    // a NON-EMPTY brief only. Empty means nobody wrote one, not that the stage is easy, so an
+    // empty line asserting otherwise is worse than no line.
+    const br = n.problem ? `<div class="sub">${esc(n.problem)}</div>` : '';
+    t+=`<tr><td class="mono">${esc(n.id)}${br}</td>`;
     D.layers.forEach(l=>{
       const b=l.bindings[n.id];
       const cls = b.unbound?'warn':(b.skipped?'skip':'mono');

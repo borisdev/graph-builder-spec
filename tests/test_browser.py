@@ -20,7 +20,10 @@ from workflow_workbench.report import render_page
 BASE = {
     "name": "demo",
     "input_type": "str", "output_type": "int",
-    "nodes": [{"id": "propose"}, {"id": "cite"}],
+    # ⚠️ `propose` carries a brief and `cite` does not — both branches of "render only a
+    # non-empty brief" need a node, or the empty case is untested.
+    "nodes": [{"id": "propose", "problem": "Two reasonable rankings can disagree completely."},
+              {"id": "cite"}],
     "edges": [{"source": "__start__", "target": "propose", "variable": "plan_text"},
               {"source": "propose", "target": "cite", "variable": "draft"},
               {"source": "cite", "target": "__end__"}],
@@ -133,6 +136,17 @@ def test_latency_appears_on_the_node():
         assert "12.5s" in p.page.inner_text('.nd[data-id="propose"]')
 
 
+def test_a_brief_renders_on_the_no_js_fallback_page_too():
+    """⛔ `problem` reached THREE surfaces' payloads and rendered on ONE. The Panel fix covered
+    the React island; this page and `devserver.PAGE` both dropped the field while their payload
+    tests stayed green. "Rendered" has to mean rendered on the page a reader actually gets —
+    and this is the one that survives the bundle failing."""
+    with Page(BASE) as p:
+        body = p.text()
+        assert "Two reasonable rankings can disagree" in body
+        assert not p.errors, p.errors
+
+
 def test_it_is_usable_on_a_phone_viewport():
     """390px wide. The graph must be on screen and the controls stacked, not clipped."""
     with Page(BASE) as p:
@@ -174,3 +188,73 @@ def test_a_wide_bindings_table_says_it_is_scrollable():
             for i in range(8)]
     with Page({**BASE, "layers": many}) as p:
         assert p.page.locator("#tblhint.on").count() == 1, "wide table gave no scroll affordance"
+
+
+# ── the DIRECT GraphSpec page, driven through the real `spec_payload` -> PAGE path ───────────────
+#
+# ⛔ WHY A SERVER AND NOT `set_content`. `devserver.PAGE` is a shell that FETCHES its payload from
+# `/spec/<name>/data`, so pasting the HTML into a blank page renders nothing. The first version of
+# the brief test drove a hand-authored report through a different server entirely — which is how a
+# field could render on one surface and be dropped on this one with every test green.
+
+def test_the_direct_graphspec_page_renders_a_brief_through_the_real_payload_path():
+    """⛔ THE PATH THAT WAS NEVER EXERCISED. `spec_payload` emits `problem`; this page's renderer
+    ignored it. No string test could see the difference — both branches live in `PAGE`'s source
+    either way — and no payload test could, because the payload was correct all along.
+    """
+    import socket
+    import threading
+    import time
+
+    import uvicorn
+
+    from workflow_workbench import (END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec,
+                                    VariableSpec)
+    from workflow_workbench.devserver import build_app
+
+    v = VariableSpec("v", str)
+    hard = StepSpec("weigh", inputs=(v,), outputs=(v,),
+                    problem="Two reasonable rankings of one set can disagree completely.")
+    easy = StepSpec("emit", inputs=(v,), outputs=(v,))
+
+    class D(GraphSpec):
+        name = "d"
+        input_type = output_type = str
+        nodes = (hard, easy)
+        edges = (EdgeSpec(source=START, target=hard, carries=v),
+                 EdgeSpec(source=hard, target=easy, carries=v),
+                 EdgeSpec(source=easy, target=END, carries=v))
+
+    async def impl(ctx) -> str:
+        return ctx.inputs
+
+    arm = StrategySpec("arm", {hard: impl, easy: impl})
+
+    s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+    app = build_app({"d": (D(), [arm])})
+    srv = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
+    t = threading.Thread(target=srv.run, daemon=True); t.start()
+    for _ in range(100):
+        if srv.started:
+            break
+        time.sleep(0.05)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch()
+            try:
+                page = browser.new_page(viewport={"width": 390, "height": 844})
+                errors: list[str] = []
+                page.on("pageerror", lambda e: errors.append(str(e)))
+                page.goto(f"http://127.0.0.1:{port}/spec/d", wait_until="networkidle")
+                page.wait_for_timeout(400)
+                body = page.inner_text("body")
+                assert "rankings of one set can disagree" in body, (
+                    "the direct GraphSpec page dropped the brief it was handed")
+                # and the stage with no brief gets no empty line claiming one
+                assert body.count("disagree") == 1
+                assert not errors, errors
+            finally:
+                browser.close()
+    finally:
+        srv.should_exit = True
+        t.join(timeout=5)

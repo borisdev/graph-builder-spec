@@ -199,6 +199,7 @@ def main() -> int:
     target = _readme()
     text = target.read_text()
     rc = 0
+    written: list[str] = []
     for tag, fn in BLOCKS:
         start, end = f"<!-- {tag}:start -->", f"<!-- {tag}:end -->"
         if start not in text or end not in text:
@@ -210,6 +211,7 @@ def main() -> int:
         body = fn()
         if "--write" in sys.argv:
             text = f"{head}{start}\n{body.strip()}\n{end}{tail}"
+            written.append(tag)
         elif stale.strip() != body.strip():
             print(f"README.md: the {tag} table is stale. Regenerate:\n"
                   f"  python3 -m workflow_workbench.reference --write")
@@ -218,7 +220,16 @@ def main() -> int:
             print(f"README.md: {tag} table matches reference.py")
     if "--write" in sys.argv:
         target.write_text(text)
-        print("README.md: both tables rewritten from reference.py")
+        # ⛔ Only on a FULL success. A missing marker pair sets rc=1 and `continue`s, so the
+        # block is skipped — and this line used to announce both tables rewritten anyway,
+        # which is a success message for a partial write. `.claude/rules/checks.md`: degraded
+        # is not a pass.
+        if rc == 0:
+            print("README.md: both tables rewritten from reference.py")
+        else:
+            print(f"README.md: PARTIAL WRITE — {len(written)} of {len(BLOCKS)} tables "
+                  f"rewritten ({', '.join(written) or 'none'}). The rest are missing their "
+                  f"markers, named above, and the file on disk is now part new and part stale.")
     return rc
 
 

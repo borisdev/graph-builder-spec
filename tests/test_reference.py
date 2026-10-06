@@ -78,6 +78,26 @@ _COUNT = re.compile(r"\b(\d+|" + "|".join(_WORDS) + r")\s+"
                     r"(?:well-formedness rules|check_\* functions|check functions)\b")
 
 
+def test_write_does_not_announce_success_on_a_partial_write() -> None:
+    """⛔ `--write` printed "both tables rewritten from reference.py" even when a marker pair was
+    missing and that block had been skipped with rc=1 — a success line over a file that is now
+    part new and part stale. `.claude/rules/checks.md`: degraded is not a pass, and the most
+    convincing shape a broken check can take is a confident green.
+    """
+    readme = (Path(__file__).resolve().parent.parent / "README.md")
+    original = readme.read_text()
+    try:
+        readme.write_text(original.replace("<!-- language:start -->", "<!-- language:gone -->"))
+        r = subprocess.run([sys.executable, "-m", "workflow_workbench.reference", "--write"],
+                           cwd=readme.parent, capture_output=True, text=True)
+        assert r.returncode == 1, "a missing marker must not exit 0"
+        assert "both tables rewritten" not in r.stdout, (
+            f"announced full success over a partial write:\n{r.stdout}")
+        assert "PARTIAL WRITE" in r.stdout and "1 of 2" in r.stdout, r.stdout
+    finally:
+        readme.write_text(original)
+
+
 def test_every_dotted_reference_in_a_docstring_resolves() -> None:
     """⛔ A docstring named `GraphSpec._check` for two releases after the method became
     `_coherence_check`.
