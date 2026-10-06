@@ -259,7 +259,9 @@ function draw(){
   /* bindings table — every layer at once */
   let t='<table><tr><th>stage</th>'+layers.map(l=>'<th>'+esc(l.name)+'</th>').join('')+'</tr>';
   D.nodes.forEach(n=>{
-    t+='<tr><td class="mono">'+esc(n.id)+'</td>';
+    // see devserver.PAGE — a non-empty brief only, for the same reason
+    const br = n.problem ? '<div class="sub">'+esc(n.problem)+'</div>' : '';
+    t+='<tr><td class="mono">'+esc(n.id)+br+'</td>';
     layers.forEach(l=>{
       const x=l.bindings[n.id]||{};
       const cls = x.unbound?'bad':(x.skipped?'skip':'mono');
