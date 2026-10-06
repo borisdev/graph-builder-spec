@@ -20,7 +20,7 @@ stores nothing. That is the CI/machine path. `/r/<sha>` is the phone path.
 
 ## The token
 
-`WORKFLOW_WORKBENCH_TOKEN` — required for every route when bound to anything but localhost.
+`GRAPH_BUILDER_SPEC_TOKEN` — required for every route when bound to anything but localhost.
 
 ⚠️ It is not there because someone might guess a URL. There is no URL to guess: scanners sweep
 the IPv4 space and connect to `ip:port` directly. Measured on the box this was written for — 842
@@ -40,11 +40,11 @@ from graph_builder_spec.report import PayloadError, render_page, validate_payloa
 
 __all__ = ["build_app", "serve"]
 
-TOKEN_ENV = "WORKFLOW_WORKBENCH_TOKEN"
+TOKEN_ENV = "GRAPH_BUILDER_SPEC_TOKEN"
 
 
 def _store_dir() -> pathlib.Path:
-    d = pathlib.Path(os.getenv("WORKFLOW_WORKBENCH_STORE")
+    d = pathlib.Path(os.getenv("GRAPH_BUILDER_SPEC_STORE")
                      or (pathlib.Path(tempfile.gettempdir()) / "graph-builder-spec-reports"))
     d.mkdir(parents=True, exist_ok=True)
     return d

@@ -19,9 +19,16 @@ from graph_builder_spec import GraphSpec     # after
 | repository | `borisdev/workflow-workbench` | `borisdev/graph-builder-spec` |
 | frontend source | `frontend/workflow-workbench/` | `frontend/graph-builder-spec/` |
 | built island | `static/workflow-workbench.{js,css}` | `static/graph-builder-spec.{js,css}` |
+| server env vars | `WORKFLOW_WORKBENCH_TOKEN` / `_STORE` | `GRAPH_BUILDER_SPEC_TOKEN` / `_STORE` |
 
 **No alias, no shim.** A missing call site is an `ImportError` at the import, not a silent change
 of behaviour — the same choice 0.2.0 made for `NodeSpec(...)` and 0.3.0 for `coherence_check()`.
+
+⚠️ **The env-var rename fails CLOSED, which is why it is safe to do without an alias.** A stale
+`WORKFLOW_WORKBENCH_TOKEN` is simply unset under the new name, and `serve()` raises `SystemExit`
+rather than binding a non-localhost host unauthenticated — verified, not assumed. The process
+refuses to start; it does not start without a token. `GRAPH_BUILDER_SPEC_STORE` falling back to
+its default is a cosmetic path change, not an access-control one.
 
 **Why.** The shipped subtitle is *"A declaration layer over Pydantic Graph Builder"*, and
 `graph-builder-spec` is that sentence. It reuses **their** noun rather than inventing one

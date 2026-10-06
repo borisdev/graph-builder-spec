@@ -185,6 +185,6 @@ def test_path_traversal_on_the_id_is_refused():
 
 def test_serve_refuses_a_public_bind_with_no_token(monkeypatch):
     from graph_builder_spec import serve as srv
-    monkeypatch.delenv("WORKFLOW_WORKBENCH_TOKEN", raising=False)
+    monkeypatch.delenv("GRAPH_BUILDER_SPEC_TOKEN", raising=False)
     with pytest.raises(SystemExit, match="refusing to bind"):
         srv.serve(host="0.0.0.0", token="")

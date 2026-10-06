@@ -71,7 +71,7 @@ def _free_port() -> int:
 @pytest.fixture(scope="module")
 def server(tmp_path_factory):
     import os
-    os.environ["WORKFLOW_WORKBENCH_STORE"] = str(tmp_path_factory.mktemp("reports"))
+    os.environ["GRAPH_BUILDER_SPEC_STORE"] = str(tmp_path_factory.mktemp("reports"))
     port = _free_port()
     app = build_app(token="", require_token=False)
     cfg = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
