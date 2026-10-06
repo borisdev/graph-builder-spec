@@ -45,6 +45,12 @@ a permanent `NOT CHECKED` line on `parallel.py`.
 
 `check_variable_types` reads the same helper and gains the same decidability.
 
+⚠️ Only a **runtime class** origin is compared. `get_origin` is `typing.Literal` for
+`Literal['ok']` and `typing.Annotated` for `Annotated[int, 'tag']`, and `issubclass` on either
+raises — which the first cut of this did, through `coherence_check()`, a method documented
+*"Never raises."* Those wrappers stay undecidable rather than being unwrapped; nothing has needed
+unwrapping yet.
+
 ### Fixed — `_type_name` rendered `list[int]` and `list` identically
 
 Its docstring said generic aliases have no `__name__`. Since 3.10 they do, and it is the bare

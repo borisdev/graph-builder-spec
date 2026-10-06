@@ -769,7 +769,19 @@ def _produces(annotation: Any, declared: Any) -> bool | None:
     # `examples/parallel.py`'s real shape — `input_type=list[int]` crossing an edge that carries
     # `numbers: list`. Only the ORIGIN is compared, so nothing is claimed about the parameter;
     # `list[int]` against a declared `list[str]` stays undecidable, which is honest.
-    if origin is not None and isinstance(declared, type):
+    #
+    # ⛔ `isinstance(origin, type)` IS THE GUARD, and the first cut of this branch did not have
+    # it. `get_origin` does not always return a runtime class: it is `typing.Literal` for
+    # `Literal['ok']` and `typing.Annotated` for `Annotated[int, 'tag']`, and `issubclass` on
+    # either RAISES `TypeError: issubclass() arg 1 must be a class`. That reached
+    # `coherence_check()`, which is documented "Never raises" — so a step annotated
+    # `-> Literal['ok', 'no']` crashed the check rather than being reported. Caught by Copilot on
+    # #22; measured before and after.
+    #
+    # Those wrappers stay UNDECIDABLE rather than being normalized to their argument. Unwrapping
+    # `Annotated` is a real improvement and nothing has needed it — `.claude/rules/project.md`:
+    # add the guard when you have the failing case, not when you foresee one.
+    if isinstance(origin, type) and isinstance(declared, type):
         return issubclass(origin, declared)
 
     return None                              # TypeVars, parameterised-vs-parameterised, exotica

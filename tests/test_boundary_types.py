@@ -15,7 +15,7 @@ inherits the author's assumption about where the fact lives. So the broad test h
 from __future__ import annotations
 
 import importlib
-import pkgutil
+from pathlib import Path
 
 from workflow_workbench import (
     END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec, SubgraphBinding,
@@ -242,32 +242,84 @@ def test_a_subgraph_can_no_longer_pass_on_a_claim_nothing_verified() -> None:
 
 # ── the broad one: calibration against the repo, not against this module ─────────────────────
 
-def _designs_in_examples() -> dict[str, type]:
-    import examples
+EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
 
+
+def _designs_in_examples() -> dict[str, type]:
+    """Every `GraphSpec` under `examples/`, discovered by FILE and imported without a net.
+
+    ⛔ This was `pkgutil.walk_packages`, wrapped in `except Exception: continue`, and it was
+    wrong in both halves — caught by Copilot on #22:
+
+        examples/local/      has no `__init__.py`, so walk_packages never descended into it and
+                             `examples.local.extraction.Extraction` was never checked
+        except: continue     a module that failed to import was silently dropped, so the
+                             calibration below could go green having checked nothing
+
+    The `>= 8` floor let either omission pass. A missing input must never read as a pass —
+    `.claude/rules/checks.md` — so discovery is by path and an import error is an error.
+    """
     found: dict[str, type] = {}
-    for mod in pkgutil.walk_packages(examples.__path__, "examples."):
-        try:
-            m = importlib.import_module(mod.name)
-        except Exception:
+    for path in sorted(EXAMPLES.rglob("*.py")):
+        if "__pycache__" in path.parts:
             continue
+        rel = path.relative_to(EXAMPLES.parent).with_suffix("")
+        name = ".".join(rel.parts)
+        m = importlib.import_module(name)          # ⛔ no try — a broken example is a failure
         for obj in vars(m).values():
             if isinstance(obj, type) and issubclass(obj, GraphSpec) and obj is not GraphSpec:
                 found.setdefault(f"{obj.__module__}.{obj.__name__}", obj)
     return found
 
 
+def test_discovery_reaches_every_example_FILE_not_every_example_package() -> None:
+    """⚠️ The guard on the guard. `test_no_design_in_the_repo_is_flagged` is only as broad as
+    this, and the first version of it quietly covered 14 of 15 designs."""
+    modules = {q.rsplit(".", 1)[0] for q in _designs_in_examples()}
+    assert "examples.local.extraction" in modules, (
+        "examples/local has no __init__.py — a package-based walk skips it entirely")
+    files = {p for p in EXAMPLES.rglob("*.py") if "__pycache__" not in p.parts}
+    assert len(files) >= 14, f"only {len(files)} example files — discovery is looking in the wrong place"
+
+
 def test_no_design_in_the_repo_is_flagged_or_silently_skipped() -> None:
     """⚠️ THE CALIBRATION, and the reason this is not a check nobody reads.
 
     A new blocking rule that fires on the repo's own examples is a rule that gets routed around.
-    Measured when this landed: 28 boundary crossings across every example, 0 findings — and the
-    one that was undecidable (`parallel.py`'s `list[int]` into `numbers: list`) is decidable
-    because `_produces` compares a parameterised alias against its origin, not because the
-    example was edited to suit the check.
+    Measured when this landed: every boundary crossing in every example, 0 findings — and the one
+    that was undecidable (`parallel.py`'s `list[int]` into `numbers: list`) is decidable because
+    `_produces` compares a parameterised alias against its origin, not because the example was
+    edited to suit the check.
     """
     designs = _designs_in_examples()
-    assert len(designs) >= 8, f"only found {len(designs)} designs — this would pass vacuously"
+    assert len(designs) >= 15, f"only found {len(designs)} designs — this would pass vacuously"
     for qual, cls in sorted(designs.items()):
         findings = check_boundary_types(cls())
         assert findings == [], f"{qual}: {findings}"
+
+
+# ── the regression Copilot found, and it was a raise rather than a wrong answer ───────────────
+
+def test_a_typing_wrapper_whose_origin_is_not_a_class_does_not_CRASH_the_check() -> None:
+    """⛔ `get_origin` does not always return a runtime class — it is `typing.Literal` for
+    `Literal['ok']` and `typing.Annotated` for `Annotated[int, 'tag']`, and `issubclass` on
+    either raises `TypeError: issubclass() arg 1 must be a class`.
+
+    The first cut of the alias branch in `_produces` had no class guard, so a step annotated
+    `-> Literal['ok', 'no']` made `coherence_check()` RAISE — and that method is documented
+    "Never raises." A crash is not a conservative failure: every other finding in the sweep is
+    lost with it.
+    """
+    from typing import Annotated, Literal
+
+    from workflow_workbench.checks import _produces
+
+    assert _produces(Literal["ok", "no"], str) is None
+    assert _produces(Annotated[int, "tag"], int) is None
+
+    async def decide(ctx) -> Literal["ok", "no"]:
+        return "ok"
+
+    findings = _design().coherence_check(StrategySpec("literal_arm", {step: decide}))
+    assert len(findings) == 1 and findings[0].startswith(NOT_CHECKED), findings
+    assert not blocking(findings), "undecidable must not stop a render"
