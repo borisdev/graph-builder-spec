@@ -116,8 +116,27 @@ One workflow — normalize a name, then compose a greeting from it:
 Desired behaviour: preserve the name's words, trim surrounding whitespace, collapse repeated
 internal whitespace, return `Hello, {name}!`.
 
-Two strategies disagree about how much of that `normalize` does. `compose` is the same function
-in both, so the comparison diagram highlights the one node that varies:
+That table is the whole declaration, and it draws itself. **Nothing is implemented at this
+point** — no `normalize` body, no `compose` body, no strategy, nothing an agent has written:
+
+```mermaid
+flowchart TD
+  START([START])
+  normalize["normalize"]
+  compose["compose"]
+  END([END])
+  START -- raw_name --> normalize
+  normalize -- clean_name --> compose
+  compose -- greeting --> END
+```
+
+Bare boxes, because nothing is bound to them yet. This picture and `coherence_check()` are what
+you review *before* asking an agent for a line of code — which is the one thing a drawing taken
+from a built graph cannot do, since building it requires the code to already exist.
+
+Two strategies disagree about how much of that `normalize` does. Same graph, two implementations
+bound: `compose` is the same function in both, so the comparison greys it and highlights the one
+node that varies:
 
 ```mermaid
 flowchart TD
@@ -194,7 +213,7 @@ Everything it produces goes to the terminal; no files are written. Excerpt:
    normalize_spaces 1.00
 ```
 
-Two mermaid blocks go past on the way: the specification, and the comparison above. A browser
+Both mermaid blocks above go past on the way — the specification, then the comparison. A browser
 viewer is available as a separate process — `uv run python3 -m workflow_workbench.cli serve`, see
 [`serve.py`](workflow_workbench/serve.py) — and nothing in the quickstart needs it.
 
