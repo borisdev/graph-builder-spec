@@ -1,5 +1,7 @@
 # workflow-workbench
 
+*A declaration layer over Pydantic Graph Builder.*
+
 **Let an AI coding agent build a workflow unsupervised and it produces code that works and is
 [incoherent](docs/glossary.md#coherence).** Not broken — that you would notice. Incoherent: a fan-out whose results are
 silently dropped, two wires crossed between values of the same type, a stage nobody implemented.

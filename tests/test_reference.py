@@ -126,6 +126,41 @@ def test_every_dotted_reference_in_a_docstring_resolves() -> None:
     assert not dead, f"docstrings name attributes that do not exist: {dead}"
 
 
+def test_the_subtitle_is_one_sentence_in_two_places_that_agree() -> None:
+    """⛔ The positioning line now lives in the README *and* in `pyproject.toml`, which is two
+    copies of one fact with nothing comparing them — the exact shape this suite keeps finding.
+
+    It also pins the two words that were wrong in the first draft of it:
+
+        "Pydantic Graph"               -> we are a layer over the BUILDER; the Graph is what
+                                          `render()` RETURNS. `graph_spec.py` imports GraphBuilder.
+        "declarative specification"    -> the glossary defines `Declaration layer` and the README
+                                          links it. A second phrase for a defined word is
+                                          `.claude/rules/domain-language.md` #2.
+    """
+    root = Path(__file__).resolve().parent.parent
+    readme = root / "README.md"
+    sub = readme.read_text().splitlines()[2].strip().strip("*")
+    assert sub == "A declaration layer over Pydantic Graph Builder.", sub
+
+    # ⛔ PARSED, not substring-matched. `f'description = "{sub}"' in text` passes while the real
+    # `[project].description` says something else — the sentence only has to appear SOMEWHERE,
+    # including in a comment or under another key. A check that reads the file instead of the
+    # field enforces nothing it claims to.
+    import tomllib
+
+    data = tomllib.loads((root / "pyproject.toml").read_text())
+    assert data["project"]["description"] == sub, (
+        f"the README subtitle and [project].description have drifted apart:\n"
+        f"  README:     {sub}\n"
+        f"  pyproject:  {data['project']['description']}")
+
+    # the two corrections, asserted rather than remembered
+    assert "Graph Builder" in sub and not sub.endswith("Pydantic Graph.")
+    assert "declarative specification" not in readme.read_text(), (
+        "`declarative specification layer` is back — the glossary term is `declaration layer`")
+
+
 def test_the_readme_shows_the_pydantic_graph_lineage() -> None:
     """⛔ `greeting.py` IS their smallest complete builder program, morphed — and the README never
     said so. The lineage lived in a docstring, so the comparison a reader wants (*here is theirs,
