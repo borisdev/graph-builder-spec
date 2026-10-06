@@ -143,9 +143,17 @@ def test_the_subtitle_is_one_sentence_in_two_places_that_agree() -> None:
     sub = readme.read_text().splitlines()[2].strip().strip("*")
     assert sub == "A declaration layer over Pydantic Graph Builder.", sub
 
-    pyproject = (root / "pyproject.toml").read_text()
-    assert f'description = "{sub}"' in pyproject, (
-        "the README subtitle and the pyproject description have drifted apart")
+    # ⛔ PARSED, not substring-matched. `f'description = "{sub}"' in text` passes while the real
+    # `[project].description` says something else — the sentence only has to appear SOMEWHERE,
+    # including in a comment or under another key. A check that reads the file instead of the
+    # field enforces nothing it claims to.
+    import tomllib
+
+    data = tomllib.loads((root / "pyproject.toml").read_text())
+    assert data["project"]["description"] == sub, (
+        f"the README subtitle and [project].description have drifted apart:\n"
+        f"  README:     {sub}\n"
+        f"  pyproject:  {data['project']['description']}")
 
     # the two corrections, asserted rather than remembered
     assert "Graph Builder" in sub and not sub.endswith("Pydantic Graph.")
