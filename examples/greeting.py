@@ -7,7 +7,7 @@ module is the whole example — the README shows excerpts of it and nothing else
 
 It is a variation of `visualize_graph.py` from <https://pydantic.dev/docs/ai/graph/builder/>,
 their smallest complete builder program: two steps, the second formatting the first's output.
-`examples/ladder/their_hello.py` keeps that original shape with no workbench in the file at all.
+`examples/ladder/their_hello.py` keeps that original shape with none of this library in the file at all.
 
 The behaviour the design is supposed to deliver:
 

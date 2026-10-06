@@ -1,4 +1,4 @@
-"""Rung 0 — the control. Pydantic Graph alone, no workbench anywhere in the file.
+"""Rung 0 — the control. Pydantic Graph alone, nothing from this library anywhere in the file.
 
 A variation of their `visualize_graph.py` from
 <https://pydantic.dev/docs/ai/graph/builder/>, which is the smallest complete program in their

@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => ({
     sourcemap: false,
     lib: {
       entry: "src/main.tsx",
-      name: "WorkflowWorkbenchIsland",
+      name: "GraphBuilderSpecIsland",
       formats: ["iife"],
       fileName: () => "graph-builder-spec.js",
       cssFileName: "graph-builder-spec",

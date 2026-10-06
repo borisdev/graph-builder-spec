@@ -98,7 +98,7 @@ so the difference you are looking at is the declaration layer and nothing else:
 | | step 1 | step 2 |
 |---|---|---|
 | **upstream**, unchanged — their [`visualize_graph.py`](https://pydantic.dev/docs/ai/graph/builder/) | `step_a` → `10` | `step_b` → `f'Result: {ctx.inputs}'` |
-| **the control** — [`their_hello.py`](examples/ladder/their_hello.py): upstream's shape, a greeting instead of a number, and no workbench in the file | `pick` → `"Hello"` | `compose` → `f"{ctx.inputs}, {ctx.state.name}!"` |
+| **the control** — [`their_hello.py`](examples/ladder/their_hello.py): upstream's shape, a greeting instead of a number, and none of this library in the file | `pick` → `"Hello"` | `compose` → `f"{ctx.inputs}, {ctx.state.name}!"` |
 | **ours** — [`greeting.py`](examples/greeting.py), the same workflow declared | `normalize` → a clean name | `compose` → `f"Hello, {name}!"` |
 
 Theirs is fine, and that is the point of keeping it: one graph with one implementation per step
@@ -594,7 +594,7 @@ Proposals, not decisions — they are tracked, not quietly pending:
 | [`docs/parity.md`](docs/parity.md) | every Pydantic Graph builder feature, declarable or not |
 | [`docs/how-it-runs.md`](docs/how-it-runs.md) | their executor from the source, with a probe behind every claim |
 | [`examples/greeting.py`](examples/greeting.py) | the walkthrough above; beside it a counter, a fan-out, subgraphs, extraction |
-| [`examples/ladder/their_hello.py`](examples/ladder/their_hello.py) | the control — their smallest program's SHAPE, adapted to a greeting, with no workbench in the file |
+| [`examples/ladder/their_hello.py`](examples/ladder/their_hello.py) | the control — their smallest program's SHAPE, adapted to a greeting, with none of this library in the file |
 | [`examples/contestable.py`](examples/contestable.py) | four judgement-call stages, two strategies, nothing implemented and no score |
 
 Downstream of community requests for
