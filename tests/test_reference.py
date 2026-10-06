@@ -20,6 +20,7 @@ from pathlib import Path
 import workflow_workbench as ww
 import workflow_workbench.checks as checks
 from workflow_workbench.reference import (
+    BLOCKS,
     GROUPS,
     NOT_THE_LANGUAGE,
     language_markdown,
@@ -120,6 +121,43 @@ def test_every_dotted_reference_in_a_docstring_resolves() -> None:
                 dead.append(f"{py.name}: {cls}.{attr}")
     assert seen, "no dotted references found at all — the assertion below would pass vacuously"
     assert not dead, f"docstrings name attributes that do not exist: {dead}"
+
+
+def test_the_readme_shows_the_pydantic_graph_lineage() -> None:
+    """⛔ `greeting.py` IS their smallest complete builder program, morphed — and the README never
+    said so. The lineage lived in a docstring, so the comparison a reader wants (*here is theirs,
+    here is the same thing declared*) was invisible to anyone who stopped at the README.
+
+    Required by name because a paragraph nothing holds in place is the first thing a prune
+    deletes, and the prune is this same change.
+    """
+    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text()
+    for needed in ("their_hello.py", "visualize_graph", "This is **their** example"):
+        assert needed in readme, (
+            f"the README no longer shows the Pydantic Graph lineage ({needed!r} is gone). "
+            "Drop this test on purpose, or restore it.")
+
+
+def test_the_readme_holds_no_second_table_of_check_names() -> None:
+    """⛔ IT HELD ONE, AND IT HAD DRIFTED. A hand-written `| check | catches |` table sat ~190
+    lines below the generated one and listed 10 of 12 — `check_recursion` and
+    `check_transform_edges` had landed and nobody re-synced the copy.
+
+    Two tables of one set of facts, one of them generated. `.claude/rules/spec-as-code.md`: a
+    document is source or derived, and mixing them is the whole failure mode.
+    """
+    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text()
+    outside = readme
+    for tag in (t for t, _ in BLOCKS):
+        start, end = f"<!-- {tag}:start -->", f"<!-- {tag}:end -->"
+        head, rest = outside.split(start, 1)
+        _, tail = rest.split(end, 1)
+        outside = head + tail
+    rows = [ln for ln in outside.splitlines()
+            if re.match(r"^\|\s*`check_[a-z_]+`", ln.strip())]
+    assert not rows, (
+        f"{len(rows)} table rows name a check outside the generated block — a second, "
+        f"hand-maintained copy of the rules table:\n  " + "\n  ".join(rows[:4]))
 
 
 def test_no_prose_anywhere_states_a_rule_count_the_generator_disagrees_with() -> None:

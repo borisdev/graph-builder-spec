@@ -82,6 +82,21 @@ Built on [Pydantic Graph](https://ai.pydantic.dev/graph/) and
 
 ## What it looks like
 
+This is **their** example, declared our way. Pydantic Graph's smallest complete builder program
+is two steps where the second formats the first's output
+([`visualize_graph.py`](https://pydantic.dev/docs/ai/graph/builder/)); the same shape runs here,
+so the difference you are looking at is the declaration layer and nothing else:
+
+| | step 1 | step 2 |
+|---|---|---|
+| **theirs** — [`their_hello.py`](examples/ladder/their_hello.py), no workbench in the file | `step_a` → `10` | `step_b` → `f'Result: {ctx.inputs}'` |
+| **ours** — [`greeting.py`](examples/greeting.py) | `normalize` → a clean name | `compose` → `f'Hello, {name}!'` |
+
+Theirs is fine, and that is the point of keeping it: one graph with one implementation per step
+runs perfectly well like that. What it cannot do is check or draw itself before the steps are
+written, or answer *"and what if `normalize` were written differently?"* — which is the only
+thing the rest of this page is about.
+
 One workflow — normalize a name, then compose a greeting from it:
 
 | step | input | output |
@@ -184,6 +199,9 @@ missed.
 
 ## What `coherence_check()` enforces
 
+<details>
+<summary><strong>All 12 rules — generated from each check's own docstring</strong></summary>
+
 <!-- rules:start -->
 **12 rules.** `coherence_check()` returns one finding per violation and an empty list for a clean design; `render()` refuses on any finding that blocks.
 
@@ -209,6 +227,8 @@ missed.
 | `check_variable_types` | Each implementation returns the type its role is declared to produce. |
 | `check_recursion` | A design does not implement one of its own nodes with itself. |
 <!-- rules:end -->
+
+</details>
 
 Every one of these exists because it caught something that otherwise **ran and returned a
 plausible answer**. Each check's docstring in [`checks.py`](workflow_workbench/checks.py) carries
@@ -250,6 +270,9 @@ A name can. Edge fields are keyword-only and `carries` is required — four inte
 slots are one transposition away from a graph that is wrong and runs.
 
 #### The data language
+
+<details>
+<summary><strong>Every word you declare a design with — generated from the types' own docstrings</strong></summary>
 
 <!-- language:start -->
 A design is **data** — tuples of these, in a class body. Nothing executes, which is what lets `coherence_check()` and `diagram()` read it before a single step is written.
@@ -295,6 +318,8 @@ A design is **data** — tuples of these, in a class body. Nothing executes, whi
 
 The two unions are annotations, not classes you instantiate — calling either one raises `TypeError`. They exist so a signature can say *any declared box*, or *anything a strategy must bind*, and have it type-check.
 <!-- language:end -->
+
+</details>
 
 ### 2. Check it and draw it, before implementing anything
 
@@ -377,34 +402,7 @@ battle = eval_battle(spec, trim_only, normalize_spaces, dataset())  # the compar
 `eval_battle` takes one `spec` and two strategies, so both arms render from the same nodes, edges
 and types. There is nowhere to put a second design.
 
-## What the checks guarantee, and what they do not
-
-The specification supplies the structure and the data contracts; a strategy supplies
-implementations; `render()` constructs the graph from those declarations. There is no second,
-separately maintained wiring definition to drift from them — `edges` is the only way a graph gets
-wired, with no hook and no override, so a strategy can change what a node *does* and cannot change
-what the workflow *is*.
-
-What the checks in [`checks.py`](workflow_workbench/checks.py) detect:
-
-| check | catches |
-|---|---|
-| `check_names` | two nodes with one name — they become one graph node id |
-| `check_reachable` | a node unreachable from `START`, or unable to reach `END` |
-| `check_variables` | an edge carrying a value its source does not produce or its target does not take |
-| `check_step_arity` | two unconditional arrivals into one step: it runs twice and one result is dropped |
-| `check_bindings` | a strategy binding too few nodes, or one the design does not declare |
-| `check_implementations` | a binding that is not callable, or does not take exactly one `ctx` |
-| `check_variable_types` | a return annotation that does not satisfy the role's declared output |
-| `check_decisions` | a branch condition anywhere but on an edge leaving a decision |
-| `check_fan_out_rejoins` | fan-out items reaching `END` without passing a join |
-| `check_subgraphs` | a child design that does not fit the node it fills, or is bound inside itself |
-
-All of that is **structural**. None of it says the workflow produces good answers: `trim_only`
-passes every one of those and gets half the cases wrong. Structural consistency is what a
-specification guarantees; behaviour is what the battle is for.
-
-### Working with a coding agent
+## Working with a coding agent
 
 The specification is the reviewable artifact. Review the diagram and the contracts, and the
 agent's job narrows to step bodies satisfying a declared input and output type for a named role,
@@ -413,7 +411,26 @@ with `coherence_check()` as the acceptance test.
 A proposed change to the workflow itself is then a diff to `nodes` and `edges` — one small place,
 reviewed on its own, not a behaviour change buried in a function body.
 
-## Current limitations
+## What this does not do
+
+### Structural checks are not a correctness proof
+
+The specification supplies the structure and the data contracts; a strategy supplies
+implementations; `render()` constructs the graph from those declarations. There is no second,
+separately maintained wiring definition to drift from them — `edges` is the only way a graph gets
+wired, with no hook and no override, so a strategy can change what a node *does* and cannot change
+what the workflow *is*.
+
+Every rule is in the generated table above, and the failure each one exists for is in that
+check's docstring in [`checks.py`](workflow_workbench/checks.py) — one place, which is the point.
+This section used to repeat all of them in a hand-written table and had already drifted to 10 of
+12; a test now refuses a second table of check names anywhere outside the generated block.
+
+All of that is **structural**. None of it says the workflow produces good answers: `trim_only`
+passes every one of those and gets half the cases wrong. Structural consistency is what a
+specification guarantees; behaviour is what the battle is for.
+
+### What cannot be declared
 
 - **The `BaseNode` authoring style cannot be declared.** It returns its own successor, so
   declared `edges` would be a claim it is free to ignore. Everything a `BaseNode` is used *for* —
@@ -435,6 +452,8 @@ Row by row, with their code beside ours: [`docs/parity.md`](docs/parity.md).
 | [`docs/parity.md`](docs/parity.md) | every Pydantic Graph builder feature, declarable or not |
 | [`docs/how-it-runs.md`](docs/how-it-runs.md) | their executor from the source, with a probe behind every claim |
 | [`examples/greeting.py`](examples/greeting.py) | the walkthrough above; beside it a counter, a fan-out, subgraphs, extraction |
+| [`examples/ladder/their_hello.py`](examples/ladder/their_hello.py) | the control — Pydantic Graph's own smallest program, no workbench in the file |
+| [`examples/contestable.py`](examples/contestable.py) | four judgement-call stages, two strategies, nothing implemented and no score |
 
 Downstream of community requests for
 [reusable/extensible nodes](https://github.com/pydantic/pydantic-ai/issues/798) and
