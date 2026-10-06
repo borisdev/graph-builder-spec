@@ -21,11 +21,11 @@ everything is the engine with extra steps.
 `docs/probe_builder_features.py` introspects `GraphBuilder` and fails if any public method is
 unclassified, so the next thing Pydantic Graph ships turns it red instead of silently widening a
 gap this page describes as closed. The rows themselves are generated from
-`workflow_workbench/parity.py`; `tests/test_parity.py` fails if this file and that one disagree.
+`graph_builder_spec/parity.py`; `tests/test_parity.py` fails if this file and that one disagree.
 
 ```bash
-python3 -m workflow_workbench.parity            # print the table
-python3 -m workflow_workbench.parity --check    # exit 1 if this file is stale
+python3 -m graph_builder_spec.parity            # print the table
+python3 -m graph_builder_spec.parity --check    # exit 1 if this file is stale
 ```
 
 ⚠️ `status` is per FEATURE, and a feature-by-feature table cannot express COMPOSITION. `map` is
@@ -42,8 +42,8 @@ identically.
 <!-- parity:start -->
 ## Every builder feature, theirs beside ours
 
-<!-- GENERATED from workflow_workbench/parity.py — do not edit by hand. -->
-<!-- Regenerate: python3 -m workflow_workbench.parity --write -->
+<!-- GENERATED from graph_builder_spec/parity.py — do not edit by hand. -->
+<!-- Regenerate: python3 -m graph_builder_spec.parity --write -->
 
 ### `step` — **yes**
 
@@ -55,7 +55,7 @@ async def double(ctx) -> int:
     return ctx.inputs * 2
 ```
 
-Workflow Workbench:
+Graph Builder Spec:
 
 ```python
 double = StepSpec("double", inputs=(n,), outputs=(n,))
@@ -74,7 +74,7 @@ g.add(g.edge_from(a).to(b))
 g.add_edge(a, b, label='count')
 ```
 
-Workflow Workbench:
+Graph Builder Spec:
 
 ```python
 EdgeSpec(source=a, target=b, carries=count)          # `carries` IS the label
@@ -88,7 +88,7 @@ Pydantic Graph:
 collect = g.join(reduce_sum, initial=0)
 ```
 
-Workflow Workbench:
+Graph Builder Spec:
 
 ```python
 collect = JoinSpec("collect", reduce_sum, initial=0,
@@ -107,7 +107,7 @@ Pydantic Graph:
 g.edge_from(g.start_node).map().to(square)
 ```
 
-Workflow Workbench:
+Graph Builder Spec:
 
 ```python
 MapEdgeSpec(source=START, target=square, carries=numbers, delivers=number)
@@ -125,7 +125,7 @@ d = d.branch(g.match(Urgent).to(escalate))
 d = d.branch(g.match(Routine).to(research))
 ```
 
-Workflow Workbench:
+Graph Builder Spec:
 
 ```python
 route = DecisionSpec("route")
@@ -146,7 +146,7 @@ async def split(ctx):
         yield w
 ```
 
-Workflow Workbench:
+Graph Builder Spec:
 
 ```python
 split = StepSpec("split", inputs=(text,), outputs=(words,), streams=True)
@@ -163,7 +163,7 @@ Pydantic Graph:
 g.edge_from(a).broadcast(lambda eb: [eb.to(x), eb.to(y)])
 ```
 
-Workflow Workbench:
+Graph Builder Spec:
 
 ```python
 EdgeSpec(source=a, target=x, carries=v)
@@ -180,7 +180,7 @@ Pydantic Graph:
 g.edge_from(a, b).to(sink)
 ```
 
-Workflow Workbench:
+Graph Builder Spec:
 
 ```python
 EdgeSpec(source=a, target=sink, carries=v)
@@ -197,7 +197,7 @@ Pydantic Graph:
 d.branch(g.match(int, matches=lambda v: v > 10).to(big))
 ```
 
-Workflow Workbench:
+Graph Builder Spec:
 
 ```python
 # not declarable. Return a discriminating TYPE from a step instead:
@@ -215,7 +215,7 @@ Pydantic Graph:
 g.edge_from(a).transform(lambda ctx: ctx.inputs.edges).to(b)
 ```
 
-Workflow Workbench:
+Graph Builder Spec:
 
 ```python
 # fixed — part of the design, like a JoinSpec's reducer:
@@ -237,7 +237,7 @@ class Increment(BaseNode[S, None, int]):
         return DoubleIt(...)
 ```
 
-Workflow Workbench:
+Graph Builder Spec:
 
 ```python
 # no equivalent for the CLASS. All three things it is used FOR are declarable:

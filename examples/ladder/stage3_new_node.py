@@ -28,7 +28,7 @@ from examples.ladder.stage1_bare import (
     salutation,
 )
 from examples.ladder.stage2_strategies import pick_casual
-from workflow_workbench import (
+from graph_builder_spec import (
     END,
     START,
     EdgeSpec,

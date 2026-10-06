@@ -12,10 +12,10 @@ from typing import Any, ClassVar
 
 from pydantic_graph import GraphBuilder
 
-from workflow_workbench import checks
-from workflow_workbench.checks import CoherenceFinding, blocking
-from workflow_workbench.diagram import diagram as _diagram, diff_diagram as _diff_diagram
-from workflow_workbench.spec import (
+from graph_builder_spec import checks
+from graph_builder_spec.checks import CoherenceFinding, blocking
+from graph_builder_spec.diagram import diagram as _diagram, diff_diagram as _diff_diagram
+from graph_builder_spec.spec import (
     Bindable,
     DecisionSpec,
     NodeSpec,
@@ -322,7 +322,7 @@ class GraphSpec:
         from the same `nodes`/`edges`, so their structures are identical BY CONSTRUCTION — a
         structural diff reports "nothing varies" on every pair. The experiment is in the bindings.
         """
-        from workflow_workbench.diagram import impl_name
+        from graph_builder_spec.diagram import impl_name
 
         def label(spec: Any) -> str:
             if isinstance(spec, TransformEdgeSpec):

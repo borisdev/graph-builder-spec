@@ -13,8 +13,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from test_subgraph import Parent, direct_strategy, subgraph_strategy  # noqa: E402
-from workflow_workbench.devserver import spec_payload  # noqa: E402
-from workflow_workbench.payload import WorkflowReport  # noqa: E402
+from graph_builder_spec.devserver import spec_payload  # noqa: E402
+from graph_builder_spec.payload import WorkflowReport  # noqa: E402
 
 
 def test_a_subgraph_bound_stage_gets_its_own_shape() -> None:
@@ -46,7 +46,7 @@ def test_the_payload_says_subgraph_explicitly_not_by_parsing_the_label() -> None
 def test_composed_and_varies_are_independent_facts() -> None:
     """Both arms composed with DIFFERENT child strategies: composed in both, and still varying.
     If the renderer merged the two channels this is the case that would lose one."""
-    from workflow_workbench import StrategySpec, SubgraphBinding
+    from graph_builder_spec import StrategySpec, SubgraphBinding
     from test_subgraph import Child, child_strategy, first, second, transform
 
     other_child = StrategySpec("other_child", {first: child_strategy[first],

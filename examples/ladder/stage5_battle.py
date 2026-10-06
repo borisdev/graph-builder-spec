@@ -23,7 +23,7 @@ from pydantic_evals.evaluators import Evaluator, EvaluatorContext
 
 from examples.ladder.stage1_bare import Guest, HelloWorld, formal
 from examples.ladder.stage2_strategies import casual
-from workflow_workbench.evals import eval_battle
+from graph_builder_spec.evals import eval_battle
 
 
 class Warmth(Evaluator):

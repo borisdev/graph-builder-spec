@@ -26,7 +26,7 @@ from examples.ladder.stage1_bare import (
     formal,
     pick,
 )
-from workflow_workbench import StrategySpec
+from graph_builder_spec import StrategySpec
 
 
 async def pick_casual(ctx) -> str:

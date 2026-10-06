@@ -18,7 +18,7 @@ pytest.importorskip("fastapi")
 import uvicorn
 from playwright.sync_api import sync_playwright
 
-from workflow_workbench.serve import build_app
+from graph_builder_spec.serve import build_app
 
 BOOT_TIMEOUT_MS = int(__import__("os").getenv("WS_BOOT_TIMEOUT_MS", "15000"))
 """Lowered in the falsification run, where every test is EXPECTED to time out."""
@@ -318,7 +318,7 @@ def test_the_bindings_table_is_not_wrapped_into_one_letter_per_line(report_url):
 def test_a_composed_stage_announces_itself_on_the_canvas(report_url):
     """⛔ RUN IN THE BROWSER, because the thing that breaks is a stale bundle.
 
-    `workflow_workbench/static/workflow-workbench.js` is a BUILT artifact committed to the repo.
+    `graph_builder_spec/static/graph-builder-spec.js` is a BUILT artifact committed to the repo.
     Editing `nodes.tsx` changes nothing until `npm run build` regenerates it — so a test that
     read the .tsx, or grepped the served HTML, would pass against a bundle that never learned
     about this. This queries the DOM React Flow actually produced.

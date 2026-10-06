@@ -1,9 +1,9 @@
 """`StepSpec.problem` — the implementer's brief, and what its absence must not mean."""
 from __future__ import annotations
 
-from workflow_workbench import EdgeSpec, END, START, GraphSpec, StepSpec, VariableSpec
-from workflow_workbench.devserver import spec_payload
-from workflow_workbench.payload import WorkflowReport
+from graph_builder_spec import EdgeSpec, END, START, GraphSpec, StepSpec, VariableSpec
+from graph_builder_spec.devserver import spec_payload
+from graph_builder_spec.payload import WorkflowReport
 
 
 def test_problem_is_keyword_only_so_the_fourth_positional_still_means_streams() -> None:
@@ -69,7 +69,7 @@ def test_a_subgraph_binding_cannot_also_be_unbound_or_skipped() -> None:
     import pytest
     from pydantic import ValidationError
 
-    from workflow_workbench.payload import Binding
+    from graph_builder_spec.payload import Binding
 
     assert Binding(impl="child::thorough", subgraph=True).subgraph
     for bad in ({"impl": None, "unbound": True}, {"impl": "x", "skipped": True}):

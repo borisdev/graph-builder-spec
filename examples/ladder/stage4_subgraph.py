@@ -30,7 +30,7 @@ from examples.ladder.stage3_new_node import (
     translate_none,
     translate_shouty,
 )
-from workflow_workbench import (
+from graph_builder_spec import (
     END,
     START,
     EdgeSpec,

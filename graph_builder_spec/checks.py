@@ -14,7 +14,7 @@ import inspect
 from collections.abc import Callable, Iterable
 from typing import Any, TypeVar
 
-from workflow_workbench.spec import (
+from graph_builder_spec.spec import (
     Bindable,
     DecisionSpec,
     NodeSpec,

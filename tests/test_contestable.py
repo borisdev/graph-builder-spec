@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from examples.contestable import Assessment, by_agreement, by_recency, weigh
-from workflow_workbench import blocking
+from graph_builder_spec import blocking
 
 ROOT = Path(__file__).resolve().parent.parent
 

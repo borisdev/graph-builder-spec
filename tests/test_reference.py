@@ -17,9 +17,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-import workflow_workbench as ww
-import workflow_workbench.checks as checks
-from workflow_workbench.reference import (
+import graph_builder_spec as ww
+import graph_builder_spec.checks as checks
+from graph_builder_spec.reference import (
     BLOCKS,
     GROUPS,
     NOT_THE_LANGUAGE,
@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def test_both_readme_blocks_are_regenerated_from_reference_py() -> None:
     """Edit a docstring, regenerate, commit both. Editing the README alone turns this red."""
-    proc = subprocess.run([sys.executable, "-m", "workflow_workbench.reference", "--check"],
+    proc = subprocess.run([sys.executable, "-m", "graph_builder_spec.reference", "--check"],
                           cwd=ROOT, capture_output=True, text=True, timeout=120)
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
@@ -92,7 +92,7 @@ def test_write_does_not_announce_success_on_a_partial_write() -> None:
     original = readme.read_text()
     try:
         readme.write_text(original.replace("<!-- language:start -->", "<!-- language:gone -->"))
-        r = subprocess.run([sys.executable, "-m", "workflow_workbench.reference", "--write"],
+        r = subprocess.run([sys.executable, "-m", "graph_builder_spec.reference", "--write"],
                            cwd=readme.parent, capture_output=True, text=True)
         assert r.returncode == 1, "a missing marker must not exit 0"
         assert "both tables rewritten" not in r.stdout, (
@@ -111,9 +111,9 @@ def test_every_dotted_reference_in_a_docstring_resolves() -> None:
     is invisible to it. This is narrow on purpose — only `Class.attr` where `Class` is something
     we export — because that is the shape that has actually gone stale.
     """
-    import workflow_workbench as ww
+    import graph_builder_spec as ww
 
-    root = Path(__file__).resolve().parent.parent / "workflow_workbench"
+    root = Path(__file__).resolve().parent.parent / "graph_builder_spec"
     exported = {n: getattr(ww, n) for n in ww.__all__ if isinstance(getattr(ww, n), type)}
     dead, seen = [], 0
     for py in sorted(root.glob("*.py")):
@@ -259,7 +259,7 @@ def test_every_rule_is_produced_inside_checks_py() -> None:
 
     A completeness claim needs a check that can go red on the NEXT one, not a patch for the last.
     """
-    root = Path(__file__).resolve().parent.parent / "workflow_workbench"
+    root = Path(__file__).resolve().parent.parent / "graph_builder_spec"
     offenders = []
     for py in sorted(root.glob("*.py")):
         if py.name == "checks.py":

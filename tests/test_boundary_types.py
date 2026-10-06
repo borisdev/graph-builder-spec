@@ -17,10 +17,10 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
-from workflow_workbench import (
+from graph_builder_spec import (
     END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec, SubgraphBinding,
     TransformEdgeSpec, VariableSpec, check_boundary_types)
-from workflow_workbench.checks import NOT_CHECKED, blocking
+from graph_builder_spec.checks import NOT_CHECKED, blocking
 
 text = VariableSpec("text", str)
 num = VariableSpec("num", int)
@@ -88,7 +88,7 @@ def test_render_refuses_a_design_whose_boundary_is_wrong() -> None:
     a signature the design contradicts and the mismatch surfaces at the caller."""
     import pytest
 
-    from workflow_workbench import SpecError
+    from graph_builder_spec import SpecError
 
     with pytest.raises(SpecError):
         _design(output_type=int).render(STRATEGY)
@@ -194,7 +194,7 @@ def test_the_exact_repro_from_the_issue_on_a_REAL_example() -> None:
 
     import pytest
 
-    from workflow_workbench import SpecError
+    from graph_builder_spec import SpecError
 
     with pytest.raises(SpecError):
         Lying().render(trim_only)
@@ -312,7 +312,7 @@ def test_a_typing_wrapper_whose_origin_is_not_a_class_does_not_CRASH_the_check()
     """
     from typing import Annotated, Literal
 
-    from workflow_workbench.checks import _produces
+    from graph_builder_spec.checks import _produces
 
     assert _produces(Literal["ok", "no"], str) is None
     assert _produces(Annotated[int, "tag"], int) is None

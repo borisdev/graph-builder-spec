@@ -32,7 +32,7 @@ verification at the foot of this page.
 
 | | |
 |---|---|
-| `from workflow_workbench import NodeSpec` | still works — `NodeSpec` is still exported |
+| `from graph_builder_spec import NodeSpec` | still works — `NodeSpec` is still exported |
 | `def f(n: NodeSpec)` in your own code | still type-checks, and now accepts joins and decisions too |
 | `JoinSpec`, `DecisionSpec`, `EdgeSpec`, `MapEdgeSpec`, `TransformEdgeSpec`, `VariableSpec`, `StrategySpec`, `SubgraphBinding`, `GraphSpec` | unchanged |
 | `GraphSpec.nodes`, `.joins`, `.decisions`, `.edges` | unchanged. `nodes` still holds steps only |

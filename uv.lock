@@ -632,7 +632,7 @@ wheels = [
 ]
 
 [[package]]
-name = "workflow-workbench"
+name = "graph-builder-spec"
 version = "0.3.0"
 source = { editable = "." }
 dependencies = [

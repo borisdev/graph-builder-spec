@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from workflow_workbench import (
+from graph_builder_spec import (
     END,
     START,
     EdgeSpec,
@@ -408,7 +408,7 @@ def test_devserver_payload_shows_the_child_design_not_a_blank_panel() -> None:
     """⚠️ `inspect.getsource` raises TypeError on a SubgraphBinding instance, and the generic
     path swallows it — so without the special case this stage renders as an empty code panel,
     which reads as "does nothing" rather than "is a whole child design"."""
-    from workflow_workbench.devserver import spec_payload
+    from graph_builder_spec.devserver import spec_payload
 
     payload = spec_payload(Parent(), [direct_strategy, subgraph_strategy])
     layer = next(la for la in payload["layers"] if la["name"] == "subgraph")
@@ -488,7 +488,7 @@ def test_a_retry_loop_is_not_reported_as_a_fan_in() -> None:
     """
     from dataclasses import dataclass, field as dc_field
 
-    from workflow_workbench import DecisionSpec
+    from graph_builder_spec import DecisionSpec
 
     @dataclass
     class Good:

@@ -12,9 +12,9 @@ import re
 
 import pytest
 
-from workflow_workbench.payload import Binding, Edge, Layer, Node, Variable, WorkflowReport
+from graph_builder_spec.payload import Binding, Edge, Layer, Node, Variable, WorkflowReport
 
-TS = pathlib.Path(__file__).parent.parent / "frontend" / "workflow-workbench" / "src" / "contract.ts"
+TS = pathlib.Path(__file__).parent.parent / "frontend" / "graph-builder-spec" / "src" / "contract.ts"
 
 MODELS = {"Variable": Variable, "Node": Node, "Edge": Edge, "Binding": Binding,
           "Layer": Layer, "WorkflowReport": WorkflowReport}
@@ -47,8 +47,8 @@ def test_the_typescript_contract_declares_no_field_python_will_reject(name):
 
 def test_the_real_producer_emits_something_the_schema_accepts():
     """The end-to-end version, over a REAL GraphSpec — this is what actually 422'd."""
-    from workflow_workbench import END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec, VariableSpec
-    from workflow_workbench.devserver import spec_payload
+    from graph_builder_spec import END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec, VariableSpec
+    from graph_builder_spec.devserver import spec_payload
 
     v = VariableSpec("v", str)
     a = StepSpec("a", inputs=(v,), outputs=(v,))

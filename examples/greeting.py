@@ -19,7 +19,7 @@ is the whole point of the pair.
 """
 from __future__ import annotations
 
-from workflow_workbench import (
+from graph_builder_spec import (
     END,
     START,
     EdgeSpec,
@@ -143,7 +143,7 @@ def main() -> None:
         print(f"   {name:<14} {text!r:<22} {outs[0]!r:<26} {outs[1]!r}")
 
     print("\n6. the battle — same cases, same evaluator, scored:")
-    from workflow_workbench.evals import eval_battle
+    from graph_builder_spec.evals import eval_battle
 
     data = dataset()
     floor = eval_battle(spec, trim_only, trim_only, data)

@@ -21,7 +21,7 @@ from examples.greeting import (
     trim_and_collapse,
     trim_only,
 )
-from workflow_workbench import SpecError, StrategySpec
+from graph_builder_spec import SpecError, StrategySpec
 
 ROOT = Path(__file__).resolve().parent.parent
 README = (ROOT / "README.md").read_text()
@@ -83,7 +83,7 @@ def test_an_incomplete_strategy_is_reported_and_then_refused() -> None:
 def test_the_battle_scores_are_what_the_readme_prints() -> None:
     """0.50 / 1.00 against a 0.00 floor — the three numbers in the README's table."""
     from examples.greeting import dataset
-    from workflow_workbench.evals import eval_battle
+    from graph_builder_spec.evals import eval_battle
 
     spec, data = Greeting(), dataset()
 

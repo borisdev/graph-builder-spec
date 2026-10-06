@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from workflow_workbench import (
+from graph_builder_spec import (
     END, START, EdgeSpec, GraphSpec, StepSpec, SpecError, StrategySpec,
     TransformEdgeSpec, VariableSpec)
 
@@ -181,7 +181,7 @@ def test_fan_out_and_reshape_are_separate_types() -> None:
     That is the better fix. A guard against an illegal combination is a guard that exists because
     the types allowed it; making it unrepresentable deletes the guard and the class of bug.
     """
-    from workflow_workbench import MapEdgeSpec
+    from graph_builder_spec import MapEdgeSpec
 
     assert not issubclass(MapEdgeSpec, TransformEdgeSpec)
     assert not issubclass(TransformEdgeSpec, MapEdgeSpec)

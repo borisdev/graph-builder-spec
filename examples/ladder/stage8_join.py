@@ -31,7 +31,7 @@ from dataclasses import dataclass
 
 from pydantic_graph.join import reduce_list_append
 
-from workflow_workbench import (
+from graph_builder_spec import (
     END,
     START,
     EdgeSpec,

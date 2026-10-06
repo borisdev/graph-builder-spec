@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from workflow_workbench import (
+from graph_builder_spec import (
     END,
     START,
     EdgeSpec,
@@ -260,7 +260,7 @@ def test_every_edge_field_is_keyword_only():
     """
     import inspect
 
-    from workflow_workbench import MapEdgeSpec, TransformEdgeSpec
+    from graph_builder_spec import MapEdgeSpec, TransformEdgeSpec
 
     for cls in (EdgeSpec, MapEdgeSpec, TransformEdgeSpec):
         params = list(inspect.signature(cls).parameters.values())
@@ -365,7 +365,7 @@ def test_blocking_agrees_with_the_comprehension_it_replaces():
 def test_every_check_tags_its_findings_with_its_own_name():
     """`check` must name the function that produced the finding — the whole point is that a
     caller can branch on it. A typo'd or copy-pasted name is invisible to every other test."""
-    import workflow_workbench.checks as c
+    import graph_builder_spec.checks as c
 
     produced = {f.check for f in _every_finding_we_can_provoke()}
     assert produced, "no findings were provoked — the assertions below would pass vacuously"
@@ -482,7 +482,7 @@ def test_every_append_site_is_tagged_even_the_ones_no_test_provokes():
     """
     import inspect
 
-    import workflow_workbench.checks as c
+    import graph_builder_spec.checks as c
 
     src = inspect.getsource(c)
     assert src.count("findings.append(") > 20, "checks.py read as empty or tiny — vacuous"

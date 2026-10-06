@@ -1,6 +1,6 @@
 ---
 name: implement-a-workflow
-description: Implement or modify the step bodies of a workflow-workbench GraphSpec. Use whenever asked to implement a step, fill in a strategy, add an arm, or make coherence_check() pass on a design in this repo.
+description: Implement or modify the step bodies of a graph-builder-spec GraphSpec. Use whenever asked to implement a step, fill in a strategy, add an arm, or make coherence_check() pass on a design in this repo.
 ---
 
 # Implementing a workflow
@@ -34,7 +34,7 @@ does **not** mean the stage is trivial.
 ## Your acceptance test
 
 ```python
-from workflow_workbench import blocking
+from graph_builder_spec import blocking
 
 findings = spec.coherence_check(strategy)
 blocking(findings)          # empty == render() will succeed
@@ -67,7 +67,7 @@ verdict — usually a missing return annotation. Fix the cause rather than filte
 
 ```bash
 uv run pytest -q
-uv run python3 -m workflow_workbench.reference --check
+uv run python3 -m graph_builder_spec.reference --check
 ```
 
 Then say which findings remain and why, including the `NOT CHECKED` ones. **Do not report a
