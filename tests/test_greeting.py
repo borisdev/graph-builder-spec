@@ -104,17 +104,70 @@ def _score(report) -> float:
     return float(getattr(v, "value", v))
 
 
-def test_the_readme_mermaid_block_is_the_diagram_the_code_emits() -> None:
-    """⛔ THE ONE THAT MATTERS MOST. A hand-pasted diagram is a claim about the declaration that
-    stops being true the moment a node is renamed, and nothing else would notice.
+# ── every drawn diagram, in BOTH directions ──────────────────────────────────────────────────
+#
+# ⛔ The check this replaced asserted ONE block — `diff_diagram()` — by name, at a time when the
+# README contained exactly one. That is the repo's recurring defect: a check narrower than its
+# claim, which goes quiet the moment a second block is pasted in by hand. So the registry below
+# is matched against the docs as a SET, and a block with no entry fails just as loudly as an
+# entry with no block.
+
+def _drawn() -> dict[str, str]:
+    """Every mermaid body the docs are expected to show, keyed by how to regenerate it.
 
     The `%%` title line is dropped because a fenced mermaid block on GitHub does not need it.
     """
-    drawn = Greeting().diff_diagram(trim_only, normalize_spaces)
-    body = "\n".join(ln for ln in drawn.splitlines() if not ln.startswith("%%")).strip()
-    assert f"```mermaid\n{body}\n```" in README, (
-        "the README's mermaid block is not what diff_diagram() emits. Regenerate it:\n"
-        "  uv run python3 -m examples.greeting")
+    spec = Greeting()
+    return {
+        "Greeting().diagram()": spec.diagram(),
+        "Greeting().diff_diagram(trim_only, normalize_spaces)":
+            spec.diff_diagram(trim_only, normalize_spaces),
+    }
+
+
+def _fenced(body: str) -> str:
+    return "```mermaid\n" + "\n".join(
+        ln for ln in body.splitlines() if not ln.startswith("%%")).strip() + "\n```"
+
+
+def _blocks_in_markdown() -> dict[str, list[str]]:
+    """⚠️ Every markdown file, not just the README. A hand-pasted diagram in `docs/` is the same
+    claim about the declaration and rots the same way."""
+    found: dict[str, list[str]] = {}
+    for path in sorted(ROOT.rglob("*.md")):
+        if any(part in {".venv", "node_modules", ".git"} for part in path.parts):
+            continue
+        text = path.read_text()
+        hits = [f"```mermaid\n{chunk.split('```')[0].strip()}\n```"
+                for chunk in text.split("```mermaid\n")[1:]]
+        if hits:
+            found[str(path.relative_to(ROOT))] = hits
+    return found
+
+
+def test_every_mermaid_block_in_the_docs_is_one_the_code_emits() -> None:
+    """⛔ THE ONE THAT MATTERS MOST. A hand-pasted diagram is a claim about the declaration that
+    stops being true the moment a node is renamed, and nothing else would notice."""
+    expected = {_fenced(body): how for how, body in _drawn().items()}
+    for path, blocks in _blocks_in_markdown().items():
+        for block in blocks:
+            assert block in expected, (
+                f"{path} contains a mermaid block no generator emits. Either regenerate it "
+                f"(uv run python3 -m examples.greeting) or register its source in _drawn().\n"
+                f"{block}")
+
+
+def test_every_diagram_the_code_emits_is_actually_drawn_in_the_docs() -> None:
+    """The other direction, and the reason the plain `diagram()` block exists at all.
+
+    `diagram()` — the picture with NOTHING implemented — was described in prose for weeks and
+    never drawn, while only the two-strategy diff was shown. A one-directional check cannot see
+    a missing picture: the blocks that are present all pass.
+    """
+    drawn_anywhere = {b for blocks in _blocks_in_markdown().values() for b in blocks}
+    for how, body in _drawn().items():
+        assert _fenced(body) in drawn_anywhere, (
+            f"{how} is registered as a diagram the docs show, and no markdown file shows it.")
 
 
 @pytest.mark.parametrize("case,text,expected", CASES)
