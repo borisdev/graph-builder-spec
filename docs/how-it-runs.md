@@ -231,7 +231,7 @@ Theirs is an ordered list of markers, so one edge can do both:
         run -> ['ADA', 'GRACE']
 
 Ours are separate types and no edge is both. See
-[issue #2](https://github.com/borisdev/workflow-workbench/issues/2) for what a path-shaped
+[issue #2](https://github.com/borisdev/graph-builder-spec/issues/2) for what a path-shaped
 `EdgeSpec` would cost.
 
 **Trigger to fix:** a design wanting `carries=list[Paper], delivers=pmid` on one wire, where the

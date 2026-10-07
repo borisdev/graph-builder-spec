@@ -64,6 +64,6 @@ The prefix match is still correct and still supported. `blocking(findings)` is t
 `render()` uses, if you would rather not spell it out:
 
 ```python
-from workflow_workbench import blocking
+from graph_builder_spec import blocking
 blocking(spec.coherence_check(strategy))
 ```

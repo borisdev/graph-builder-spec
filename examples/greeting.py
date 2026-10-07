@@ -7,7 +7,7 @@ module is the whole example — the README shows excerpts of it and nothing else
 
 It is a variation of `visualize_graph.py` from <https://pydantic.dev/docs/ai/graph/builder/>,
 their smallest complete builder program: two steps, the second formatting the first's output.
-`examples/ladder/their_hello.py` keeps that original shape with no workbench in the file at all.
+`examples/ladder/their_hello.py` keeps that original shape with none of this library in the file at all.
 
 The behaviour the design is supposed to deliver:
 
@@ -19,7 +19,7 @@ is the whole point of the pair.
 """
 from __future__ import annotations
 
-from workflow_workbench import (
+from graph_builder_spec import (
     END,
     START,
     EdgeSpec,
@@ -143,7 +143,7 @@ def main() -> None:
         print(f"   {name:<14} {text!r:<22} {outs[0]!r:<26} {outs[1]!r}")
 
     print("\n6. the battle — same cases, same evaluator, scored:")
-    from workflow_workbench.evals import eval_battle
+    from graph_builder_spec.evals import eval_battle
 
     data = dataset()
     floor = eval_battle(spec, trim_only, trim_only, data)

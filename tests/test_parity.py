@@ -13,14 +13,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-from workflow_workbench.parity import FEATURES, as_markdown
+from graph_builder_spec.parity import FEATURES, as_markdown
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
 def test_the_parity_doc_is_regenerated_from_parity_py() -> None:
     """Edit `parity.py`, regenerate, commit both. Editing `docs/parity.md` alone turns this red."""
-    proc = subprocess.run([sys.executable, "-m", "workflow_workbench.parity", "--check"],
+    proc = subprocess.run([sys.executable, "-m", "graph_builder_spec.parity", "--check"],
                           cwd=ROOT, capture_output=True, text=True, timeout=120)
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
@@ -94,8 +94,8 @@ def test_the_source_warns_where_an_agent_would_trip() -> None:
     one is a decision that took measurement to reach. A warning that lives only in the README is
     a warning nobody reading `spec.py` will see.
     """
-    spec_src = (ROOT / "workflow_workbench" / "spec.py").read_text()
-    graph_src = (ROOT / "workflow_workbench" / "graph_spec.py").read_text()
+    spec_src = (ROOT / "graph_builder_spec" / "spec.py").read_text()
+    graph_src = (ROOT / "graph_builder_spec" / "graph_spec.py").read_text()
 
     assert "FOR A FUTURE AGENT" in spec_src, "spec.py lost its warnings"
     assert spec_src.count("FOR A FUTURE AGENT") >= 2, "StepSpec and EdgeSpec each need one"
@@ -111,7 +111,7 @@ def test_the_probe_reads_parity_rather_than_keeping_its_own_copy() -> None:
     """Two descriptions of one thing is the drift this whole file exists to prevent — and the
     probe had its own table until parity.py absorbed it."""
     probe = (ROOT / "docs" / "probe_builder_features.py").read_text()
-    assert "from workflow_workbench.parity import FEATURES" in probe
+    assert "from graph_builder_spec.parity import FEATURES" in probe
     assert "MATRIX: dict" not in probe, "the probe grew a second table again"
 
 

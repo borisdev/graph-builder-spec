@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from workflow_workbench.spec import (
+from graph_builder_spec.spec import (
     DecisionSpec,
     NodeSpec,
     EdgeSpec,
@@ -109,7 +109,7 @@ def diagram(nodes: tuple[NodeSpec, ...], edges: tuple[EdgeSpec, ...], *,
     it needs a BUILT graph, so it cannot draw an unimplemented design, and both arms of one design
     render byte-identically because a built graph does not know which strategy produced it.
     """
-    out = [f"%% {title}" if title else "%% workflow-workbench", "flowchart TD"]
+    out = [f"%% {title}" if title else "%% graph-builder-spec", "flowchart TD"]
     out.append("  START([START])")
     for n in nodes:
         if isinstance(n, DecisionSpec):

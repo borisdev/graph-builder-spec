@@ -14,8 +14,8 @@ from pathlib import Path
 
 import pytest
 
-import workflow_workbench as ww
-from workflow_workbench import Bindable, DecisionSpec, JoinSpec, NodeSpec, StepSpec
+import graph_builder_spec as ww
+from graph_builder_spec import Bindable, DecisionSpec, JoinSpec, NodeSpec, StepSpec
 
 
 def test_stepspec_is_the_class_you_instantiate() -> None:

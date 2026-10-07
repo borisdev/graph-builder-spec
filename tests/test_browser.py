@@ -15,7 +15,7 @@ import pytest
 pytest.importorskip("playwright.sync_api")
 from playwright.sync_api import sync_playwright
 
-from workflow_workbench.report import render_page
+from graph_builder_spec.report import render_page
 
 BASE = {
     "name": "demo",
@@ -208,9 +208,9 @@ def test_the_direct_graphspec_page_renders_a_brief_through_the_real_payload_path
 
     import uvicorn
 
-    from workflow_workbench import (END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec,
+    from graph_builder_spec import (END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec,
                                     VariableSpec)
-    from workflow_workbench.devserver import build_app
+    from graph_builder_spec.devserver import build_app
 
     v = VariableSpec("v", str)
     hard = StepSpec("weigh", inputs=(v,), outputs=(v,),

@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 
 from pydantic import BaseModel
 
-from workflow_workbench import (
+from graph_builder_spec import (
     END,
     START,
     EdgeSpec,

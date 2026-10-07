@@ -4,9 +4,9 @@
 `tests/test_parity.py` fails if the two disagree — `.claude/rules/spec-as-code.md`: a document is
 either source or derived, and mixing them is the whole failure mode.
 
-    python3 -m workflow_workbench.parity          # print the markdown
-    python3 -m workflow_workbench.parity --write   # rewrite docs/parity.md
-    python3 -m workflow_workbench.parity --check   # exit 1 if docs/parity.md is stale
+    python3 -m graph_builder_spec.parity          # print the markdown
+    python3 -m graph_builder_spec.parity --write   # rewrite docs/parity.md
+    python3 -m graph_builder_spec.parity --check   # exit 1 if docs/parity.md is stale
 
 Why it exists at all: a list of someone else's API is wrong the moment they add to it, and a
 hand-written one reads as a complete inventory of the gaps while missing whole features.
@@ -170,13 +170,13 @@ _LABEL = {"yes": "**yes**", "partial": "partial", "refused": "refused, on purpos
 def as_markdown() -> str:
     """The table for `docs/parity.md`. Write it with `--write`."""
     out = ["## Every builder feature, theirs beside ours", "",
-           "<!-- GENERATED from workflow_workbench/parity.py — do not edit by hand. -->",
-           "<!-- Regenerate: python3 -m workflow_workbench.parity --write -->", ""]
+           "<!-- GENERATED from graph_builder_spec/parity.py — do not edit by hand. -->",
+           "<!-- Regenerate: python3 -m graph_builder_spec.parity --write -->", ""]
     for f in FEATURES:
         if f.status == "plumbing":
             continue
         out += [f"### `{f.api}` — {_LABEL[f.status]}", "", "Pydantic Graph:", "",
-                "```python", f.theirs, "```", "", "Workflow Workbench:", "",
+                "```python", f.theirs, "```", "", "Graph Builder Spec:", "",
                 "```python", f.ours, "```", ""]
         if f.note:
             out += [f"> {f.note}", ""]
@@ -217,7 +217,7 @@ def main() -> int:
         return 0
     if _stale.strip() != body.strip():
         print(f"{path}: the table is stale. Regenerate:\n"
-              f"  python3 -m workflow_workbench.parity --write")
+              f"  python3 -m graph_builder_spec.parity --write")
         return 1
     print(f"{path} matches parity.py")
     return 0

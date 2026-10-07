@@ -3,7 +3,7 @@ import { defineConfig } from "vite";
 
 // One island, one IIFE bundle, fixed filenames — the Python page hard-codes the two asset paths
 // and there is no manifest to read at request time. Output lands in the package's static tree and
-// is COMMITTED: `pip install workflow-workbench` runs no node step, so an un-built island is a 404.
+// is COMMITTED: `pip install graph-builder-spec` runs no node step, so an un-built island is a 404.
 // Same reasoning as the webapp's causal-graph island, deliberately.
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
@@ -13,15 +13,15 @@ export default defineConfig(({ mode }) => ({
     "process.env.NODE_ENV": JSON.stringify(mode === "development" ? "development" : "production"),
   },
   build: {
-    outDir: "../../workflow_workbench/static",
+    outDir: "../../graph_builder_spec/static",
     emptyOutDir: false,
     sourcemap: false,
     lib: {
       entry: "src/main.tsx",
-      name: "WorkflowWorkbenchIsland",
+      name: "GraphBuilderSpecIsland",
       formats: ["iife"],
-      fileName: () => "workflow-workbench.js",
-      cssFileName: "workflow-workbench",
+      fileName: () => "graph-builder-spec.js",
+      cssFileName: "graph-builder-spec",
     },
   },
   server: { port: 5175 },

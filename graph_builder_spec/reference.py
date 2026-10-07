@@ -5,9 +5,9 @@ Two tables, one generator:
     the data language     every word you declare a design with
     well-formedness       every rule `coherence_check()` enforces
 
-    python3 -m workflow_workbench.reference            # print both
-    python3 -m workflow_workbench.reference --write    # rewrite the README's blocks
-    python3 -m workflow_workbench.reference --check    # exit 1 if either is stale
+    python3 -m graph_builder_spec.reference            # print both
+    python3 -m graph_builder_spec.reference --write    # rewrite the README's blocks
+    python3 -m graph_builder_spec.reference --check    # exit 1 if either is stale
 
 ⛔ THIS MODULE INVENTS NO DESCRIPTIONS. Every cell is the first line of the thing's own
 docstring, or — for the two unions — the names of their members. So a table cannot claim
@@ -26,8 +26,8 @@ import sys
 import typing
 from dataclasses import dataclass
 
-import workflow_workbench as ww
-from workflow_workbench import checks
+import graph_builder_spec as ww
+from graph_builder_spec import checks
 
 __all__ = ["Word", "Rule", "vocabulary", "rules", "language_markdown", "rules_markdown"]
 
@@ -214,7 +214,7 @@ def main() -> int:
             written.append(tag)
         elif stale.strip() != body.strip():
             print(f"README.md: the {tag} table is stale. Regenerate:\n"
-                  f"  python3 -m workflow_workbench.reference --write")
+                  f"  python3 -m graph_builder_spec.reference --write")
             rc = 1
         else:
             print(f"README.md: {tag} table matches reference.py")

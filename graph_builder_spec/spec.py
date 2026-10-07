@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from workflow_workbench.graph_spec import GraphSpec
+    from graph_builder_spec.graph_spec import GraphSpec
 
 __all__ = ["SpecError", "VariableSpec", "StepSpec", "EdgeSpec", "MapEdgeSpec",
            "TransformEdgeSpec",
@@ -517,7 +517,7 @@ class DecisionSpec:
 
 #: Every box a design DECLARES. The word matches Pydantic Graph, whose `graph.nodes` holds
 #: `['__end__', '__start__', 'compose', 'normalize']` — for them a node is any vertex and a step
-#: is one KIND of node. `workflow_workbench.payload.Node` already agreed (`kind: str = "step"`);
+#: is one KIND of node. `graph_builder_spec.payload.Node` already agreed (`kind: str = "step"`);
 #: only this module did not, because `NodeSpec` named the general thing and meant the specific one.
 #:
 #: ⛔ RENAMED IN 0.2.0. `NodeSpec` was the class you instantiate; it is now `StepSpec`, and this

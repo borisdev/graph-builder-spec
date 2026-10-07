@@ -1,4 +1,4 @@
-# workflow-workbench
+# graph-builder-spec
 
 *A declaration layer over Pydantic Graph Builder.*
 
@@ -13,7 +13,7 @@ step that composes the greeting and nothing complains: right type, right shape, 
 normalization stage silently stops mattering. Declaring each value by NAME, not just by type, is
 what turns that into a finding.
 
-Workflow Workbench is a [declaration layer](docs/glossary.md#declaration-layer) over Pydantic Graph Builder. You write the workflow's
+Graph Builder Spec is a [declaration layer](docs/glossary.md#declaration-layer) over Pydantic Graph Builder. You write the workflow's
 shape and its data contracts as **data**, before any step exists — which is what makes that class
 of defect findable:
 
@@ -98,7 +98,7 @@ so the difference you are looking at is the declaration layer and nothing else:
 | | step 1 | step 2 |
 |---|---|---|
 | **upstream**, unchanged — their [`visualize_graph.py`](https://pydantic.dev/docs/ai/graph/builder/) | `step_a` → `10` | `step_b` → `f'Result: {ctx.inputs}'` |
-| **the control** — [`their_hello.py`](examples/ladder/their_hello.py): upstream's shape, a greeting instead of a number, and no workbench in the file | `pick` → `"Hello"` | `compose` → `f"{ctx.inputs}, {ctx.state.name}!"` |
+| **the control** — [`their_hello.py`](examples/ladder/their_hello.py): upstream's shape, a greeting instead of a number, and none of this library in the file | `pick` → `"Hello"` | `compose` → `f"{ctx.inputs}, {ctx.state.name}!"` |
 | **ours** — [`greeting.py`](examples/greeting.py), the same workflow declared | `normalize` → a clean name | `compose` → `f"Hello, {name}!"` |
 
 Theirs is fine, and that is the point of keeping it: one graph with one implementation per step
@@ -192,8 +192,8 @@ Python 3.12 or newer, and [uv](https://docs.astral.sh/uv/). No API keys: the exa
 string handling and calls no model.
 
 ```bash
-git clone https://github.com/borisdev/workflow-workbench
-cd workflow-workbench
+git clone https://github.com/borisdev/graph-builder-spec
+cd graph-builder-spec
 uv sync --no-dev --extra evals
 uv run python3 -m examples.greeting
 ```
@@ -214,8 +214,8 @@ Everything it produces goes to the terminal; no files are written. Excerpt:
 ```
 
 Both mermaid blocks above go past on the way — the specification, then the comparison. A browser
-viewer is available as a separate process — `uv run python3 -m workflow_workbench.cli serve`, see
-[`serve.py`](workflow_workbench/serve.py) — and nothing in the quickstart needs it.
+viewer is available as a separate process — `uv run python3 -m graph_builder_spec.cli serve`, see
+[`serve.py`](graph_builder_spec/serve.py) — and nothing in the quickstart needs it.
 
 ## The development sequence
 
@@ -267,7 +267,7 @@ missed.
 </details>
 
 Every one of these exists because it caught something that otherwise **ran and returned a
-plausible answer**. Each check's docstring in [`checks.py`](workflow_workbench/checks.py) carries
+plausible answer**. Each check's docstring in [`checks.py`](graph_builder_spec/checks.py) carries
 the measured case that produced it.
 
 **These are structural checks, not a proof of correctness.** A step that returns its input
@@ -428,7 +428,7 @@ f.check       # 'check_bindings'  — which check produced it
 f.about       # 'compose'         — the node; 'source->target' for an edge; '' for the design
 f.blocking    # True              — False only for a `NOT CHECKED — …` stated gap
 
-from workflow_workbench import blocking
+from graph_builder_spec import blocking
 blocking(spec.coherence_check(unfinished))    # what `render()` refuses on, gaps excluded
 ```
 
@@ -522,7 +522,7 @@ wired, with no hook and no override, so a strategy can change what a node *does*
 what the workflow *is*.
 
 Every rule is in the generated table above, and the failure each one exists for is in that
-check's docstring in [`checks.py`](workflow_workbench/checks.py) — one place, which is the point.
+check's docstring in [`checks.py`](graph_builder_spec/checks.py) — one place, which is the point.
 This section used to repeat all of them in a hand-written table and had already drifted to 10 of
 12; a test now refuses a second table of check names anywhere outside the generated block.
 
@@ -594,7 +594,7 @@ Proposals, not decisions — they are tracked, not quietly pending:
 | [`docs/parity.md`](docs/parity.md) | every Pydantic Graph builder feature, declarable or not |
 | [`docs/how-it-runs.md`](docs/how-it-runs.md) | their executor from the source, with a probe behind every claim |
 | [`examples/greeting.py`](examples/greeting.py) | the walkthrough above; beside it a counter, a fan-out, subgraphs, extraction |
-| [`examples/ladder/their_hello.py`](examples/ladder/their_hello.py) | the control — their smallest program's SHAPE, adapted to a greeting, with no workbench in the file |
+| [`examples/ladder/their_hello.py`](examples/ladder/their_hello.py) | the control — their smallest program's SHAPE, adapted to a greeting, with none of this library in the file |
 | [`examples/contestable.py`](examples/contestable.py) | four judgement-call stages, two strategies, nothing implemented and no score |
 
 Downstream of community requests for
@@ -629,5 +629,5 @@ uv run python3 -m examples.greeting                 # the walkthrough above
 uv run python3 docs/probe_api.py                    # the node-identity claims, against the real library
 uv run python3 docs/probe_builder_features.py       # what the specification can and cannot express
 uv run python3 docs/probe_executor.py               # every claim in docs/how-it-runs.md
-uv run python3 -m workflow_workbench.parity --check  # docs/parity.md is generated, not written
+uv run python3 -m graph_builder_spec.parity --check  # docs/parity.md is generated, not written
 ```

@@ -1,5 +1,5 @@
 [project]
-name = "workflow-workbench"
+name = "graph-builder-spec"
 version = "0.3.0"
 description = "A declaration layer over Pydantic Graph Builder."
 readme = "README.md"
@@ -12,8 +12,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/borisdev/workflow-workbench"
-Source = "https://github.com/borisdev/workflow-workbench"
+Homepage = "https://github.com/borisdev/graph-builder-spec"
+Source = "https://github.com/borisdev/graph-builder-spec"
 
 [project.optional-dependencies]
 evals = ["pydantic-evals>=2.0"]
@@ -35,6 +35,6 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["workflow_workbench"]
+packages = ["graph_builder_spec"]
 # The built island ships IN the wheel — `pip install` runs no node step.
-artifacts = ["workflow_workbench/static/*"]
+artifacts = ["graph_builder_spec/static/*"]

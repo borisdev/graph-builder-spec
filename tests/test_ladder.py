@@ -11,7 +11,7 @@ import asyncio
 
 import pytest
 
-from workflow_workbench import SpecError
+from graph_builder_spec import SpecError
 
 
 # ── rung 0: the control ─────────────────────────────────────────────────────────────────────
@@ -80,7 +80,7 @@ def test_rung3_a_strategy_predating_the_new_node_is_refused() -> None:
     from examples.ladder.stage1_bare import compose_sentence, pick, pick_formal
     from examples.ladder.stage1_bare import compose as compose_node
     from examples.ladder.stage3_new_node import TranslatedHello
-    from workflow_workbench import StrategySpec
+    from graph_builder_spec import StrategySpec
 
     stale = StrategySpec("stale", {pick: pick_formal, compose_node: compose_sentence})
     with pytest.raises(SpecError, match="does not bind node 'translate'"):
@@ -116,7 +116,7 @@ def test_rung5_a_replicate_measures_the_floor_and_is_labelled_as_one() -> None:
     from examples.ladder.stage1_bare import HelloWorld, formal
     from examples.ladder.stage2_strategies import casual
     from examples.ladder.stage5_battle import DATASET, run_with_state
-    from workflow_workbench.evals import eval_battle
+    from graph_builder_spec.evals import eval_battle
 
     spec = HelloWorld()
     floor = eval_battle(spec, formal, formal, DATASET, run=run_with_state)
@@ -270,7 +270,7 @@ def test_rung8_the_same_shape_as_a_step_is_refused() -> None:
     from examples.ladder.stage8_join import (
         BrokenGreetings, announce, announce_both, casual, collect_as_step, formal,
         say_casual, say_formal)
-    from workflow_workbench import StrategySpec
+    from graph_builder_spec import StrategySpec
 
     async def collect_step(ctx) -> list:
         return [ctx.inputs]
@@ -305,7 +305,7 @@ def test_rung8_a_mutable_seed_must_be_a_factory() -> None:
     run's results leak into the next. Refused at declaration rather than debugged later."""
     from pydantic_graph.join import reduce_list_append
 
-    from workflow_workbench import JoinSpec
+    from graph_builder_spec import JoinSpec
 
     with pytest.raises(SpecError, match="exactly one of"):
         JoinSpec("bad", reduce_list_append)
@@ -361,7 +361,7 @@ def test_rung9_a_real_fan_in_is_still_caught_alongside_a_decision() -> None:
     """The exclusivity analysis must not become a blanket amnesty for branching designs."""
     from examples.ladder.stage9_decision import (
         Log, Triage, complaint, handled, intake, report, report_out, route, verdict)
-    from workflow_workbench import EdgeSpec, StepSpec
+    from graph_builder_spec import EdgeSpec, StepSpec
 
     sneak = StepSpec("sneak", inputs=(verdict,), outputs=(handled,))
 
@@ -389,7 +389,7 @@ def test_rung9_a_branch_without_a_condition_is_refused() -> None:
     from examples.ladder.stage9_decision import (
         complaint, escalate, handled, intake, report, report_out, research, route, verdict)
     from examples.ladder.stage9_decision import Triage, Urgent, careful
-    from workflow_workbench import END, START, EdgeSpec
+    from graph_builder_spec import END, START, EdgeSpec
 
     class NoWhen(Triage):
         name = "no_when"
@@ -411,7 +411,7 @@ def test_rung9_a_condition_on_an_ordinary_edge_is_refused() -> None:
     from examples.ladder.stage9_decision import (
         complaint, escalate, handled, intake, report, report_out, research, route, verdict)
     from examples.ladder.stage9_decision import Routine, Triage, Urgent, careful
-    from workflow_workbench import END, START, EdgeSpec
+    from graph_builder_spec import END, START, EdgeSpec
 
     class StrayWhen(Triage):
         name = "stray_when"

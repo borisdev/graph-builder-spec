@@ -12,7 +12,7 @@ not have:
 every check this library exists to provide — `coherence_check()` says so out loud (`NOT CHECKED — ...
 overrides build_pydantic_structure()`), and the middle section measures exactly that.
 
-⛔ THE TABLE IS `workflow_workbench/parity.py`, AND IT IS CHECKED AGAINST THE REAL API. It was
+⛔ THE TABLE IS `graph_builder_spec/parity.py`, AND IT IS CHECKED AGAINST THE REAL API. It was
 hand-written here once, from a grep of method names, and it MISSED FIVE — `stream`, `node`,
 `match_node`, `add_mapping_edge`, and the `matches=` predicate on `match` — while reading as a
 complete inventory of the gaps. A hand-maintained inventory of someone else's API is wrong the
@@ -205,7 +205,7 @@ print("=" * 92)
 print("can a GraphSpec DECLARE it? there is no second route — the declaration is the only wiring.")
 print("=" * 92 + "\n")
 
-from workflow_workbench import (  # noqa: E402
+from graph_builder_spec import (  # noqa: E402
     END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec, VariableSpec)
 
 n = VariableSpec("n", int)
@@ -233,12 +233,12 @@ print("     `stream`, joins, decisions and fan-in were all declarable.")
 print()
 
 
-# ── the table lives in workflow_workbench/parity.py — ONE definition ────────────────────────
+# ── the table lives in graph_builder_spec/parity.py — ONE definition ────────────────────────
 #
 # ⛔ Two descriptions of one thing is the drift `.claude/rules/spec-as-code.md` exists to
 # prevent, so there is exactly one: `parity.py` is source, `docs/parity.md` is generated from it,
 # and this probe reads it rather than keeping its own copy.
-from workflow_workbench.parity import FEATURES  # noqa: E402
+from graph_builder_spec.parity import FEATURES  # noqa: E402
 
 ORDER = {"yes": 0, "partial": 1, "refused": 2, "cannot": 3, "plumbing": 4}
 print(f"{'GraphBuilder API':<32} {'declarable':>18}   what to write instead")
@@ -256,7 +256,7 @@ print(f"\n{counts['yes']} declarable, {counts['partial']} partial, "
 print("⚠️ `refused` and `cannot` are NOT the same as missing, and are kept apart on purpose:")
 print("   collapsing them into 'no' is how a design decision comes to read as a gap, and how the")
 print("   next person 'fixes' it. Full side-by-side examples: docs/parity.md, or")
-print("   `python3 -m workflow_workbench.parity`.")
+print("   `python3 -m graph_builder_spec.parity`.")
 
 
 # ── ⛔ and the check that stops this list going stale ────────────────────────────────────────

@@ -1,4 +1,4 @@
-"""workflow_workbench — one Pydantic graph design, many competing strategies.
+"""graph_builder_spec — one Pydantic graph design, many competing strategies.
 
     GraphSpec        the design: nodes + edges, as DATA
     StepSpec         one role a strategy fills. The class you instantiate.
@@ -10,10 +10,10 @@
     blocking         the findings that stop a render, i.e. all but the stated gaps
     spec.render(strategy) -> a real pydantic_graph.Graph
 
-`evals` is imported separately (`from workflow_workbench.evals import eval_battle`) so that `render()`
+`evals` is imported separately (`from graph_builder_spec.evals import eval_battle`) so that `render()`
 stays usable without an evaluation framework installed.
 """
-from workflow_workbench.checks import (
+from graph_builder_spec.checks import (
     NOT_CHECKED,
     CoherenceFinding,
     blocking,
@@ -31,9 +31,9 @@ from workflow_workbench.checks import (
     check_variable_types,
     check_variables,
 )
-from workflow_workbench.diagram import diagram, diff_diagram
-from workflow_workbench.graph_spec import GraphSpec
-from workflow_workbench.spec import (
+from graph_builder_spec.diagram import diagram, diff_diagram
+from graph_builder_spec.graph_spec import GraphSpec
+from graph_builder_spec.spec import (
     END,
     START,
     Bindable,

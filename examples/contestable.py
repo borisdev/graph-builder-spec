@@ -26,7 +26,7 @@ with a right answer you could look up. Here every stage is contestable:
 """
 from __future__ import annotations
 
-from workflow_workbench import (
+from graph_builder_spec import (
     END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec, VariableSpec, blocking)
 
 # ── the values that move ────────────────────────────────────────────────────────────────────

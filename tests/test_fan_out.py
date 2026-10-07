@@ -8,7 +8,7 @@ from __future__ import annotations
 import pytest
 from pydantic_graph.join import reduce_list_append, reduce_sum
 
-from workflow_workbench import (
+from graph_builder_spec import (
     END, START, EdgeSpec, GraphSpec, JoinSpec, MapEdgeSpec, StepSpec, SpecError,
     StrategySpec, VariableSpec)
 
