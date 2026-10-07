@@ -474,6 +474,22 @@ def test_a_linear_chain_is_not_flagged() -> None:
 
 # ── a loop-back is not a fan-in ─────────────────────────────────────────────────────────────
 
+# ⚠️ MODULE scope, not inside the test, and that is load-bearing. This file has
+# `from __future__ import annotations`, so `-> Again | Good` is a STRING at runtime and
+# `get_type_hints` resolves it against the module namespace. Defined inside the function they
+# are invisible, and `check_variable_types` reports NOT CHECKED — which is honest but makes the
+# test assert nothing. They were locals while the variable was `object`, where it did not matter
+# because `object` short-circuits the comparison.
+@dataclass
+class Good:
+    text: str
+
+
+@dataclass
+class Again:
+    text: str
+
+
 def test_a_retry_loop_is_not_reported_as_a_fan_in() -> None:
     """⛔ `check_step_arity`'s SECOND false positive, found the same way as the first — by
     building a real design instead of reasoning about the rule.
@@ -491,21 +507,13 @@ def test_a_retry_loop_is_not_reported_as_a_fan_in() -> None:
     from graph_builder_spec import DecisionSpec
 
     @dataclass
-    class Good:
-        text: str
-
-    @dataclass
-    class Again:
-        text: str
-
-    @dataclass
     class Log:
         steps: list = dc_field(default_factory=list)
         n: int = 0
 
     seed = VariableSpec("seed", str)
     draft = VariableSpec("draft", str)
-    verdict = VariableSpec("verdict", object)
+    verdict = VariableSpec("verdict", Again | Good)   # was `object`, now declarable
     out_v = VariableSpec("out_v", str)
 
     propose = StepSpec("propose", inputs=(seed,), outputs=(draft,))
@@ -533,7 +541,7 @@ def test_a_retry_loop_is_not_reported_as_a_fan_in() -> None:
         ctx.state.steps.append(f"propose#{ctx.state.n}")
         return f"draft-{ctx.state.n}"
 
-    async def do_judge(ctx) -> object:
+    async def do_judge(ctx) -> Again | Good:
         ctx.state.steps.append("judge")
         return Again(ctx.inputs) if ctx.state.n < 3 else Good(ctx.inputs)
 

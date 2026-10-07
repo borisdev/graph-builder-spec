@@ -1,10 +1,22 @@
-"""#1 item 3 (`object` silently disables a check) and #2 (map-then-transform)."""
-from graph_builder_spec import (END, START, EdgeSpec, GraphSpec, MapEdgeSpec, StepSpec,
-                                StrategySpec, TransformEdgeSpec, VariableSpec)
+"""#1 item 3 — `object` is now REFUSED — and #2, map-then-transform on one wire."""
+from dataclasses import dataclass
+
+from graph_builder_spec import (END, START, EdgeSpec, GraphSpec, MapEdgeSpec, SpecError,
+                                StepSpec, StrategySpec, VariableSpec)
 
 print("=" * 72)
-print("#1 item 3 — THE SAME MISTAKE, caught once and silent once")
+print("#1 item 3 — `object` USED to switch the check off silently. Now it is refused.")
 print("=" * 72)
+
+
+@dataclass
+class Urgent:
+    text: str
+
+
+@dataclass
+class Routine:
+    text: str
 
 
 def design(var: VariableSpec, impl) -> tuple:
@@ -16,27 +28,46 @@ def design(var: VariableSpec, impl) -> tuple:
     return cls(), StrategySpec("s", {gate: impl})
 
 
-async def returns_a_string(ctx) -> str:          # ⬅ the implementation is a str
+async def returns_a_string(ctx) -> str:
     return "not what was declared"
 
 
-# A: the variable is declared `int`. The impl returns `str`.
-spec, arm = design(VariableSpec("verdict", int), returns_a_string)
-print("\nA. VariableSpec('verdict', int)   + an impl annotated -> str")
-for f in spec.coherence_check(arm):
-    print(f"   CAUGHT: {str(f)[:96]}...")
+async def triages(ctx) -> Urgent | Routine:
+    return Urgent(ctx.inputs) if "chest" in ctx.inputs else Routine(ctx.inputs)
 
-# B: the variable is declared `object`. The impl returns `str`. SAME mistake.
-spec, arm = design(VariableSpec("verdict", object), returns_a_string)
-print("\nB. VariableSpec('verdict', object) + the SAME impl")
-print(f"   {spec.coherence_check(arm) or 'CLEAN — and NOTHING says the check was skipped'}")
-print("\n   `object` accepts anything, so the check cannot decide — correct. But it")
-print("   reports nothing, so NOT CHECKED and 0 FOUND render identically.")
-print("   The fix is one NOT CHECKED line, not a new rule.")
-print("\n   And it is not hypothetical — this is in a shipped example:")
+
+print("\nA. the mistake, when the type is concrete — always caught:")
+spec, arm = design(VariableSpec("verdict", int), returns_a_string)
+for f in spec.coherence_check(arm):
+    print(f"   CAUGHT: {str(f)[:92]}...")
+
+print("\nB. `object`, which used to make the SAME mistake report CLEAN:")
+try:
+    VariableSpec("verdict", object)
+    print("   ...accepted?!")
+except SpecError as e:
+    print(f"   REFUSED at declaration: {str(e)[:88]}...")
+
+print("\nC. the replacement — declare what actually flows, as a union:")
+spec, arm = design(VariableSpec("verdict", Urgent | Routine), triages)
+print(f"   right impl  -> {spec.coherence_check(arm) or 'CLEAN'}")
+spec, bad = design(VariableSpec("verdict", Urgent | Routine), returns_a_string)
+for f in spec.coherence_check(bad):
+    print(f"   wrong impl  -> {str(f)[:88]}...")
+
+print("\n   ⛔ C IS WHY THE BAN ALONE WOULD NOT HAVE BEEN ENOUGH. `_produces` handled a union")
+print("   ANNOTATION and not a union DECLARATION, so `-> str` against `Urgent | Routine` came")
+print("   back NOT CHECKED. Banning `object` without that would have moved the silence, not")
+print("   removed it. Both halves shipped together.")
+
+print("\nD. and the examples that used `object` now declare the truth:")
 import examples.ladder.stage9_decision as s9
-print(f"   examples/ladder/stage9_decision.py: "
-      f"{[f'{v.name}: object' for v in (s9.verdict,) if v.type is object]}")
+import examples.ladder.stage10_no_basenode as s10
+print(f"   stage9  verdict: {s9.verdict.type}")
+print(f"   stage10 verdict: {s10.verdict.type}")
+print(f"   stage10 checked: {s10.checked.type}")
+print(f"   stage10 output_type: {s10.Intake.output_type}")
+print(f"   both still check clean: {s9.Triage().coherence_check() == [] and s10.Intake().coherence_check() == []}")
 
 print()
 print("=" * 72)

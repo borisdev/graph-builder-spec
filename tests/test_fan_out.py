@@ -121,12 +121,14 @@ def test_a_generator_bound_to_a_non_streaming_node_fails_loudly() -> None:
     weaker justification than the one I had in mind, and worth writing down as the weaker one.
     """
     text = VariableSpec("text", str)
-    out = VariableSpec("out", object)
+    # `object` is no longer declarable — and `str` is the honest type here anyway:
+    # the generator yields `ctx.inputs`, which is the `str` that came in.
+    out = VariableSpec("out", str)
     node = StepSpec("node", inputs=(text,), outputs=(out,))     # streams NOT set
 
     class NotStreaming(GraphSpec):
         name = "not_streaming"
-        input_type, output_type = str, object
+        input_type, output_type = str, str
         nodes = (node,)
         edges = (EdgeSpec(source=START, target=node, carries=text), EdgeSpec(source=node, target=END, carries=out))
 

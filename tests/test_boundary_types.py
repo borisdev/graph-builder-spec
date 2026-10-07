@@ -114,9 +114,14 @@ def test_the_input_may_be_WIDENED_on_the_way_in() -> None:
 
 def test_the_output_may_be_NARROWED_on_the_way_out() -> None:
     """The edge delivers and the graph promises, so a narrower delivered type is correct.
-    `examples/ladder/stage10_no_basenode.py` really does this: `report: str` reaching an
-    `output_type=object`."""
-    assert _design(output_type=object).coherence_check() == []
+
+    ⛔ REWRITTEN. This asserted it with `output_type=object`, and `object` is no longer
+    declarable — Boris, 2026-10-07: *"Stop allowing `object`."* A union is the replacement and a
+    better test besides: `object` made the assertion vacuous, because `_produces` returns True
+    for `object` before looking at anything. `str` against `str | int` exercises the real
+    union path.
+    """
+    assert _design(output_type=str | int).coherence_check() == []
 
 
 def test_the_reverse_of_each_is_NOT_legal() -> None:

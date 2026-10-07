@@ -99,6 +99,13 @@ class VariableSpec:
     def __post_init__(self) -> None:
         if not self.name:
             raise SpecError("a VariableSpec needs a name — an unnamed variable is just a type")
+        if self.type is object:
+            raise SpecError(
+                f"{self.name!r} is declared `object`, which accepts anything. That silently "
+                f"switches OFF type checking for this variable and says nothing about it — "
+                f"NOT CHECKED and 0 FOUND rendering the same, which is the one thing this "
+                f"library exists to prevent. Declare what actually flows; if several types do, "
+                f"declare the union: VariableSpec({self.name!r}, Plan | NotAPlan).")
 
     def __str__(self) -> str:
         return f"{self.name}: {getattr(self.type, '__name__', self.type)}"

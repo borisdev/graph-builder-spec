@@ -99,21 +99,30 @@ documented boundaries between what a spec checks and what an eval measures. **On
 
 ```
 ========================================================================
-#1 item 3 — THE SAME MISTAKE, caught once and silent once
+#1 item 3 — `object` USED to switch the check off silently. Now it is refused.
 ========================================================================
 
-A. VariableSpec('verdict', int)   + an impl annotated -> str
-   CAUGHT: 's' binds 'gate' to returns_a_string, which returns str — but 'gate' is declared to produce int....
+A. the mistake, when the type is concrete — always caught:
+   CAUGHT: 's' binds 'gate' to returns_a_string, which returns str — but 'gate' is declared to produce ...
 
-B. VariableSpec('verdict', object) + the SAME impl
-   CLEAN — and NOTHING says the check was skipped
+B. `object`, which used to make the SAME mistake report CLEAN:
+   REFUSED at declaration: 'verdict' is declared `object`, which accepts anything. That silently switches OFF type ...
 
-   `object` accepts anything, so the check cannot decide — correct. But it
-   reports nothing, so NOT CHECKED and 0 FOUND render identically.
-   The fix is one NOT CHECKED line, not a new rule.
+C. the replacement — declare what actually flows, as a union:
+   right impl  -> CLEAN
+   wrong impl  -> 's' binds 'gate' to returns_a_string, which returns str — but 'gate' is declared to prod...
 
-   And it is not hypothetical — this is in a shipped example:
-   examples/ladder/stage9_decision.py: ['verdict: object']
+   ⛔ C IS WHY THE BAN ALONE WOULD NOT HAVE BEEN ENOUGH. `_produces` handled a union
+   ANNOTATION and not a union DECLARATION, so `-> str` against `Urgent | Routine` came
+   back NOT CHECKED. Banning `object` without that would have moved the silence, not
+   removed it. Both halves shipped together.
+
+D. and the examples that used `object` now declare the truth:
+   stage9  verdict: examples.ladder.stage9_decision.Urgent | examples.ladder.stage9_decision.Routine
+   stage10 verdict: examples.ladder.stage10_no_basenode.Plan | examples.ladder.stage10_no_basenode.NotAPlan
+   stage10 checked: examples.ladder.stage10_no_basenode.TooThin | examples.ladder.stage10_no_basenode.Plan
+   stage10 output_type: examples.ladder.stage10_no_basenode.NotAPlan | str
+   both still check clean: True
 
 ========================================================================
 #2 — fan out AND reshape on one wire. Not expressible.
