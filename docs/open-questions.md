@@ -1,232 +1,152 @@
-# The four open questions you asked about
+# Three open questions, by running them
 
-Not committed yet — written for a read-through. The GitHub issues stay canonical; this is one
-page so you don't have to open four tabs. Every number and every output below was produced by
-running the code on `main` (`bbf2766`), today.
+Each section is a **runnable probe** in `docs/`, its real output pasted below. Same convention as
+`docs/probe_api.py` and `docs/probe_builder_features.py` — the output is not hand-written, so it
+goes stale loudly rather than quietly.
+
+```bash
+uv run python3 docs/probe_problem_gap.py            # 1
+uv run python3 docs/probe_about_across_nesting.py   # 2
+uv run python3 docs/probe_object_and_paths.py       # 3
+```
+
+Issues: #10, #9, #1 + #2. Measured on `bbf2766`.
 
 ---
 
-## 1. "Pattern catalogue" (#13) — what it is, and why I'd drop it
+## 1. `GraphSpec.problem` (#10) — a requirement that evaporates
 
-### What someone proposed
+**The question:** a role says what every implementation must do. A reusable *graph* has its own
+purpose. When you bind the graph to the role, who owns the brief?
 
-A `patterns/` directory of reusable workflow shapes, each with Alexander-style prose — recurring
-problem, context, why this arrangement helps, tradeoffs, how it varies, how to evaluate, relation
-to other patterns. The pitch: a library of *named arrangements* you reach for, like "Pipeline" or
-"Fan-out / reduce", rather than examples you read once.
-
-### Why it is nothing today
+**The failure:** the parent's role demands quotations. The child graph does not do quotations. All
+types match, so nothing objects.
 
 ```
-examples/
-  greeting.py            2 steps. Has a battle. Its own docstring says it is NOT contestable.
-  contestable.py         4 judgement-call stages. Has a TEST FORBIDDING a score.
-  parallel.py            fan-out + join. No dataset.
-  counter.py             loop-back. No dataset.
-  subgraph.py            nested graph. No dataset.
-  ladder/stage1..10      11 teaching rungs, deliberately repetitive.
-  local/extraction.py    no dataset.
+1. the parent's requirement, written down:
+   extract.problem = 'Extract claims WITH a supporting quotation for each.'
+
+2. can the CHILD state its own purpose, so the two could be compared?
+   hasattr(GraphSpec, 'problem') = False   <-- THE GAP
+
+3. coherence_check with the child bound to that role:
+   []        <-- CLEAN. Paper->Claims lines up.
+
+4. what it actually produces:
+   text='Metformin lowers A1c'                               quote=''
+   text='Fasting insulin was never measured'                 quote=''
+
+   Every quote is empty. The requirement was in extract.problem, a string
+   nothing compares to anything, and types cannot carry 'with a quotation'.
 ```
 
-A "pattern" was supposed to be distinguishable from an example by being *measured* — importable
-by name, shipping a `Dataset` and ≥2 strategies, with a recorded noise floor. **Measured against
-that bar, the count is zero**, and it is zero in all 15 designs. So the catalogue is an empty
-directory with a manifesto.
-
-### The actual failure mode
-
-With no checkable test, "pattern" degrades into *whatever someone wrote six paragraphs about* —
-which is `spec-as-code.md`'s exact prohibition: a confidently wrong doc is worse than no doc,
-because a missing doc makes you read the code.
-
-### ⭐ Recommendation: drop it
-
-- `examples/` already does the job, and the **ladder** (11 rungs, each adding one concept) is a
-  better teaching device than a catalogue because its order is enforced by tests.
-- A registry with zero members is an abstraction with no caller — `project.md`'s standing rule.
-- **The double-check, so this is not just my opinion:** if the idea were load-bearing, something
-  would already be reaching for it. Grepped: `pattern` appears in no type name, no module, no
-  public export, and no test. It exists only in issue prose.
-
-Build it the day two designs genuinely share an arrangement and someone wants to pick between
-them by name. Not before.
+**Consequence:** `StepSpec.problem` exists and is the only place the requirement is written;
+`GraphSpec.problem` does not exist, so there is nothing to compare it against. The rule to
+implement: neither brief overrides, replaces or fills in the other, and a **missing** role brief
+must never display the child's in its place — that makes a borrowed purpose read as the role's
+requirement.
 
 ---
 
-## 2. `GraphSpec.problem` (#10) — a brief that disappears across a boundary
+## 2. `about` (#9) — what it is, and why nesting breaks it
 
-### The field that exists
-
-```python
-normalize = StepSpec("normalize", inputs=(raw_name,), outputs=(clean_name,),
-                     problem="How much of what the caller typed counts as the name?")
-```
-
-`StepSpec.problem` is **the problem, never the solution** — what *every* implementation of this
-role must deal with. Measured: `'problem' in StepSpec.__dataclass_fields__` → `True`.
-
-### The field that does not
-
-`hasattr(GraphSpec, 'problem')` → **`False`**. A reusable graph cannot state its own purpose.
-
-### Why that is a real bug, in one worked case
-
-A parent declares a role. A child graph is bound as its implementation.
-
-```python
-# the PARENT's role — note what it demands
-extract = StepSpec("extract", inputs=(paper,), outputs=(claims,),
-                   problem="Extract claims WITH a supporting quotation for each.")
-
-# the CHILD graph, written elsewhere, reused here
-class ExtractFactualClaims(GraphSpec):      # its own purpose: "extract factual claims"
-    input_type, output_type = Paper, Claims  # ...and nothing says "no quotations"
-    ...
-
-StrategySpec("arm", {extract: GraphImplementation(graph=ExtractFactualClaims(), strategy=...)})
-```
-
-`coherence_check()` passes. The types line up — `Paper` in, `Claims` out — and **types cannot
-carry "with a supporting quotation."** The parent's requirement is silently dropped, and the only
-place it was ever written down is the parent's `problem` string, which nothing compares against
-anything.
-
-### The rule, and the part that is easy to get wrong
+**The question:** you asked what `about` is. It is one of three attributes on a finding, so a
+caller can branch on structure instead of regexing an English sentence.
 
 ```
-StepSpec.problem    what EVERY implementation of this role must address
-GraphSpec.problem   this reusable graph's OWN problem
+PART 1 — `about` on a flat design. Three attributes per finding:
+
+   about        check                  blocking  the sentence
+   'orphan'     check_reachable        True      node 'orphan' is unreachable from START — its im...
+   'orphan'     check_reachable        True      node 'orphan' cannot reach END — whatever it pro...
+   'parse'      check_bindings         True      strategy 'partial' does not bind node 'parse'. E...
+   'orphan'     check_bindings         True      strategy 'partial' does not bind node 'orphan'. ...
+
+   A UI does nodes[f.about] to highlight the box. No regex on English.
+   nodes['orphan'] -> StepSpec('orphan', (t: str) -> (t: str))
+
+
+PART 2 — the SAME field, once a child graph is bound. ⛔ THE BUG:
+
+   about='orphan'   resolves in the parent? False   node 'orphan' is unreachable from START ...
+   about='orphan'   resolves in the parent? False   node 'orphan' cannot reach END — whateve...
+   about='orphan'   resolves in the parent? False   node 'orphan' is unreachable from START ...
+   about='orphan'   resolves in the parent? False   node 'orphan' cannot reach END — whateve...
+
+   parent's nodes: ['step_a', 'step_b']
+   abouts handed back: ['orphan', 'orphan', 'orphan', 'orphan']
+   -> nodes['orphan'] would KeyError: the caller holds the parent.
+   -> and the two children BOTH have a node called 'orphan', so their
+      findings are spelled IDENTICALLY: 4 of them, indistinguishable.
+
+   The fix #9 carries: about must become a PATH — 'step_a/orphan'.
 ```
 
-**Neither overrides, replaces, or fills in the other.** Specifically: when the role's brief is
-missing, the child's brief must *not* be shown in its place — that would make a borrowed purpose
-read as the role's requirement. And absence must stay distinguishable from a written brief,
-because an empty `problem` means *nothing is claimed*, not *this stage is easy*.
-
-### Out of scope, deliberately
-
-- **No `rubric` field.** A rubric belongs where something can run it. Grepped: no `step_battle`,
-  no `run_step`, no `StepRunner` exists.
-- **No mandatory prose.** A required brief makes the ones written to satisfy a type checker
-  indistinguishable from the ones written because somebody thought about the problem.
-
-### ⚠️ The known trap
-
-`StepSpec.problem` reached the payload and stopped there for a whole release — it was in the JSON
-and never rendered. It now shows in the Panel with browser tests. **The same mistake is available
-to `GraphSpec.problem`**: adding the field is 3 lines, and it is worthless until a surface shows it.
+**Consequence:** on a flat design `about` works — `nodes[f.about]` resolves and a UI can highlight
+the box. Nested, **all four findings come back as `'orphan'`**, none of which is a node the caller
+holds, and the two children's are spelled identically. `about` has to become a path
+(`step_a/orphan`), which is why it rides along with the `GraphImplementation` rename instead of
+landing on its own.
 
 ---
 
-## 3. What `about` is (#9's real work)
+## 3. #1 and #2
 
-### What it is
+**#1 asks:** where does a declaration claim something nothing verifies? Four places; three are
+documented boundaries between what a spec checks and what an eval measures. **One is a real bug.**
 
-Every finding from `coherence_check()` is a `CoherenceFinding` — a `str` subclass, so it prints
-and compares exactly like the plain string it used to be, but carrying three extra attributes:
-
-```python
-f = CoherenceFinding("orphan is unreachable", check="check_reachable", about="orphan")
-
-str(f)       # 'orphan is unreachable'   <- byte-identical to the old plain string
-f.check      # 'check_reachable'         <- which rule produced it
-f.about      # 'orphan'                  <- WHAT IT IS ABOUT
-f.blocking   # True                      <- defect, vs a `NOT CHECKED` stated gap
-```
-
-`about` exists so a caller can **branch on structure instead of regexing the sentence**. A UI
-highlighting the offending node does `nodes[f.about]`; without it, it would parse English.
-
-### Its documented value space — exactly four kinds
+**#2 asks:** should an edge be an ordered list of steps, like pydantic's `Path`?
 
 ```
-"normalize"          a node / join / decision name
-"propose->cite"      source->target, for a finding about an edge
-"trim_only"          a strategy name
-""                   the whole design (e.g. "no edge reaches END")
+========================================================================
+#1 item 3 — THE SAME MISTAKE, caught once and silent once
+========================================================================
+
+A. VariableSpec('verdict', int)   + an impl annotated -> str
+   CAUGHT: 's' binds 'gate' to returns_a_string, which returns str — but 'gate' is declared to produce int....
+
+B. VariableSpec('verdict', object) + the SAME impl
+   CLEAN — and NOTHING says the check was skipped
+
+   `object` accepts anything, so the check cannot decide — correct. But it
+   reports nothing, so NOT CHECKED and 0 FOUND render identically.
+   The fix is one NOT CHECKED line, not a new rule.
+
+   And it is not hypothetical — this is in a shipped example:
+   examples/ladder/stage9_decision.py: ['verdict: object']
+
+========================================================================
+#2 — fan out AND reshape on one wire. Not expressible.
+========================================================================
+
+What you want: carries a list, delivers ONE pmid per item.
+  MapEdgeSpec  fans out      list -> paper
+  then reshape               paper -> pmid     before it lands
+
+  MapEdgeSpec(..., apply=...) -> TypeError: MapEdgeSpec.__init__() got an unexpected keyword argument 'apply'
+
+  No single edge is both. The workaround is a step that exists only to unwrap:
+    StepSpec('unwrap', (paper: str) -> (pmid: str))
+    MapEdgeSpec(source=START, target=unwrap, carries=papers, delivers=paper)
+    EdgeSpec(source=unwrap, target=rate, carries=pmid)
+  ...which puts a BOX on the diagram for something that is not a stage.
+
+⚠️ But the two are genuinely different KINDS of thing at build time:
+   a map is rewritten into a real Fork NODE before the executor runs;
+   a transform survives on the wire and is walked per completion.
+   pydantic's own _flatten_paths asserts exactly that:
+     assert not isinstance(item, MapMarker | BroadcastMarker),
+            'These should be removed during Graph building'
+
+   So our separate types say out loud what a uniform list would hide.
+   TRIGGER to build it: the first real design that needs it. None does yet.
 ```
 
-`test_every_finding_names_something_the_caller_can_look_up` enforces that set — it asserts every
-non-empty `about` resolves to something the caller actually holds. That is why, when I added
-`check_boundary_types` yesterday, I wrote `about="input_type"` and then **reverted it**: a port
-name would be a fifth kind, and quietly widening a field other code resolves is a vocabulary
-change, not an implementation detail.
+**Consequence for #1:** the fix is one `NOT CHECKED` line folded into the existing summary, not a
+new rule. It costs rung 9 one honest line of output and makes the opt-out visible.
 
-### The bug #9 has to fix
-
-A child graph's findings are propagated to the parent **unchanged**, so their `about` is relative
-to the *child*:
-
-```python
-parent.coherence_check(strategy)
-# -> [... about="orphan" ...]
-#
-#    `orphan` is a node in the CHILD. The caller holds the parent.
-#    nodes["orphan"] -> KeyError. And two different children with a node of
-#    the same name produce two findings that are spelled identically.
-```
-
-So `about` needs to carry a **path** across a nesting boundary — something like
-`"extract/orphan"` — which changes what the field means and is why it rides along with the
-`SubgraphBinding` → `GraphImplementation` rename rather than landing separately.
-
----
-
-## 4. #1 and #2, plainly
-
-### #1 — "four places the declaration outruns the check"
-
-A catalogue of places a `GraphSpec` **claims** something nothing verifies. Three are documented
-boundaries; **one is a real bug.**
-
-| | claim | status |
-|---|---|---|
-| **3** | `VariableSpec("v", object)` silently disables type checking for that variable | ⛔ **the bug** |
-| 1 | a step can return the *wrong value* of the right type | boundary: spec vs eval |
-| 2 | a `-> int` annotation is not enforced by Python | boundary: complements a type checker |
-| 4 | a streaming node has no useful return annotation | already honest — reports `NOT CHECKED` |
-
-**Why #3 is the bug, measured today:**
-
-```python
-verdict = VariableSpec("verdict", object)       # examples/ladder/stage9_decision.py does this
-async def returns_anything(ctx) -> str: ...     # declared to produce `object`
-
-coherence_check()          -> CLEAN   (no mention of `object`)
-coherence_check(strategy)  -> CLEAN   (nothing said about `object` accepting anything)
-```
-
-Declaring `object` turns the check off **and says nothing**, which is `checks.md`'s headline
-prohibition: `NOT CHECKED` and `0 FOUND` must never render the same. The fix is one `NOT CHECKED`
-line folded into the existing summary — the opt-out becomes visible instead of invisible. Cost:
-rung 9's output gains one honest line.
-
-### #2 — should an edge be a list of steps?
-
-Pydantic's own edge is an ordered list of markers, so theirs composes and ours does not:
-
-```python
-# THEIRS — measured against 2.35.1, runs, returns ['ADA','GRACE']
-g.edge_from(g.start_node).map().transform(lambda ctx: ctx.inputs["name"]).to(shout)
-
-# OURS — not expressible. MapEdgeSpec and TransformEdgeSpec are separate types,
-# and no single edge can be both.
-```
-
-**The answer is currently no, and the reason is not taste.** The two are different *kinds* of
-thing at build time:
-
-```python
-# _flatten_paths, pydantic's graph_builder.py
-assert not isinstance(item, MapMarker | BroadcastMarker), 'These should be removed during Graph building'
-```
-
-A `map` is rewritten into a real `Fork` **node** before the executor runs; a `transform` survives
-on the wire and is walked per completion. Our two types say that out loud where a uniform list
-hides it. Their `Path` field is literally called `working_items` — an accumulator left behind by
-method chaining, which is the natural shape of a fluent builder and not of a literal declaration.
-
-**The trigger to build it**, written down so nobody re-argues it: the first design that wants to
-fan out a collection *and* reshape each item before it lands — `carries=list[Paper]`,
-`delivers=pmid` — where the alternative is a step that exists only to unwrap. Nothing in 11 ladder
-rungs or 6 nobsmed arms needs it yet.
+**Consequence for #2:** no, not yet — and the reason is mechanical rather than aesthetic. A `map`
+becomes a real `Fork` node at build time and a `transform` does not, so our two types say out loud
+what one uniform list would hide until `_flatten_paths`. The trigger is written down: the first
+design that needs to fan out a collection *and* reshape each item before it lands, where the
+alternative is a step that exists only to unwrap.
