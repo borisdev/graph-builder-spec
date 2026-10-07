@@ -5,6 +5,55 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### ⛔ Breaking — `object` is no longer a declarable type
+
+```python
+VariableSpec("verdict", object)          # SpecError, at declaration
+VariableSpec("verdict", Plan | NotAPlan) # declare what actually flows
+```
+
+Boris, 2026-10-07: *"Stop allowing `object`."*
+
+**Why.** `object` accepts anything, so `check_variable_types` could not decide — and it reported
+**nothing**, which is `NOT CHECKED` and `0 FOUND` rendering identically, the one failure this
+library exists to prevent. Measured before the change: the *same* wrong return type was caught
+against a declared `int` and silent against a declared `object`. `#1` item 3.
+
+A union is the replacement and is a better declaration besides: the types a `DecisionSpec`
+branches on are exactly the union members, so the declaration now states what the routing
+already assumed.
+
+⚠️ **And the ban alone would have MOVED the silence rather than removed it.** `_produces` handled
+a union *annotation* and not a union *declaration*, so `-> str` against a declared
+`Urgent | Routine` still came back `NOT CHECKED`. Both halves ship together; a declared union now
+decides — any member satisfying it is enough.
+
+⚠️ `object` on a graph boundary (`input_type` / `output_type`) is now a **blocking finding** from
+`check_boundary_types`, for the same reason.
+
+⚠️ `check_boundary_types` now narrows an END edge by its `when=`. Without that, banning `object`
+forced a *wider* `output_type` than the truth: `stage10`'s stop-early edge carries
+`verdict: Plan | NotAPlan` but is `when=NotAPlan`, so only a `NotAPlan` can reach END along it,
+and `output_type = NotAPlan | str` is correct. A branch type is a fact the declaration already
+states.
+
+**Migration.** Both examples that used it now declare unions, and the change immediately surfaced
+**three real mismatches `object` had been hiding** — two implementations annotated `-> object`,
+and the boundary imprecision above:
+
+```
+stage9  verdict      Urgent | Routine
+stage10 verdict      Plan | NotAPlan
+stage10 checked      TooThin | Plan
+stage10 output_type  NotAPlan | str
+```
+
+⚠️ One migration trap, hit in this repo's own tests: with `from __future__ import annotations`,
+`-> Again | Good` is a string resolved against the MODULE namespace. Classes defined inside a
+test function are invisible to it and the check degrades to `NOT CHECKED` — honest, but the test
+then asserts nothing. `object` hid that too, because it short-circuits before resolution.
+
+
 ### ⛔ Breaking — renamed to `graph-builder-spec`
 
 ```python

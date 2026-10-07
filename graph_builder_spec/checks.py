@@ -15,6 +15,7 @@ from collections.abc import Callable, Iterable
 from typing import Any, TypeVar
 
 from graph_builder_spec.spec import (
+    VariableSpec,
     Bindable,
     DecisionSpec,
     NodeSpec,
@@ -762,6 +763,21 @@ def _produces(annotation: Any, declared: Any) -> bool | None:
             return None
         return all(verdicts)
 
+    # ⛔ The DECLARED side may be a union too, and handling only the annotation side is why
+    # banning `object` would have moved the silence rather than removed it. Measured: with
+    # `verdict: Urgent | Routine` replacing `verdict: object`, an implementation annotated
+    # `-> str` still reported NOT CHECKED, because `Urgent | Routine` is not a `type` and fell
+    # through to the final `return None`. ANY member satisfying it is enough — that is what a
+    # union means to a consumer reading the value.
+    d_origin = typing.get_origin(declared)
+    if d_origin is typing.Union or type(declared).__name__ == "UnionType":
+        verdicts = [_produces(annotation, m) for m in typing.get_args(declared)]
+        if any(v is True for v in verdicts):
+            return True
+        if any(v is None for v in verdicts):
+            return None
+        return False
+
     if isinstance(annotation, type) and isinstance(declared, type):
         return issubclass(annotation, declared)
 
@@ -848,9 +864,32 @@ def check_boundary_types(parent: Any) -> list[CoherenceFinding]:
             port = "input_type"
         else:
             declared = parent.output_type
-            crossing = [(e, getattr(e, "delivers", None) or e.carries)
-                        for e in parent.edges if isinstance(e.target, _End)]
+            # ⚠️ `when=` NARROWS what travels this wire, and ignoring it made the check
+            # demand a wider `output_type` than the truth. In `stage10_no_basenode` the
+            # stop-early edge carries `verdict: Plan | NotAPlan` but is `when=NotAPlan`, so
+            # only a NotAPlan can ever reach END along it — `output_type = NotAPlan | str` is
+            # correct and the un-narrowed check called it wrong. A branch type is a fact the
+            # declaration already states; not reading it is the check being lazier than the
+            # design.
+            crossing = []
+            for e in parent.edges:
+                if not isinstance(e.target, _End):
+                    continue
+                var = getattr(e, "delivers", None) or e.carries
+                when = getattr(e, "when", None)
+                if when is not None:
+                    var = VariableSpec(var.name, when)
+                crossing.append((e, var))
             port = "output_type"
+
+        if declared is object:
+            findings.append(CoherenceFinding(
+                f"this design declares {port} `object`, which accepts anything — so nothing can "
+                f"be checked at this boundary and nothing would say so. Declare the types that "
+                f"actually cross it, as a union if there are several: "
+                f"`output_type = NotAPlan | str`.",
+                check="check_boundary_types"))
+            continue
 
         for _edge, var in crossing:
             # input:  the declared type is handed to the edge, so IT must satisfy the variable.

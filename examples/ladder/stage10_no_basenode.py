@@ -57,9 +57,9 @@ class Log:
 
 
 paste = VariableSpec("paste", str)
-verdict = VariableSpec("verdict", object)
+verdict = VariableSpec("verdict", Plan | NotAPlan)
 draft = VariableSpec("draft", str)
-checked = VariableSpec("checked", object)
+checked = VariableSpec("checked", TooThin | Plan)
 report = VariableSpec("report", str)
 
 triage = StepSpec("triage", inputs=(paste,), outputs=(verdict,))
@@ -87,7 +87,10 @@ class Intake(GraphSpec):
 
     name = "intake"
     state_type = Log
-    input_type, output_type = str, object
+    input_type, output_type = str, NotAPlan | str
+    """⚠️ A UNION, because END really does receive two different things: the
+    stop-early branch delivers `verdict` (a NotAPlan) and the normal path delivers
+    `report` (a str). `object` used to paper over that and checked neither."""
     nodes = (triage, accept, propose, review, retry_seed, publish)
     decisions = (gate, again)
     edges = (EdgeSpec(source=START, target=triage, carries=paste),
@@ -105,7 +108,7 @@ class Intake(GraphSpec):
              EdgeSpec(source=publish, target=END, carries=report))
 
 
-async def do_triage(ctx) -> object:
+async def do_triage(ctx) -> Plan | NotAPlan:
     ctx.state.steps.append("triage")
     # 3. DISPATCH — the successor is chosen by the TYPE this returns, not by a hidden call
     return Plan(ctx.inputs) if "mg" in ctx.inputs else NotAPlan("no medication named")
@@ -126,7 +129,7 @@ async def do_propose(ctx) -> str:
     return f"draft-{ctx.state.attempts}"
 
 
-async def do_review(ctx) -> object:
+async def do_review(ctx) -> TooThin | Plan:
     ctx.state.steps.append("review")
     return TooThin(ctx.inputs) if ctx.state.attempts < 2 else Plan(ctx.inputs)
 
@@ -146,7 +149,7 @@ careful = StrategySpec("careful", {triage: do_triage, accept: do_accept,
                                    retry_seed: do_retry_seed, publish: do_publish})
 
 
-async def do_triage_permissive(ctx) -> object:
+async def do_triage_permissive(ctx) -> Plan | NotAPlan:
     """A second arm that gates differently — WITHOUT touching the topology, which is the point."""
     ctx.state.steps.append("triage")
     return Plan(ctx.inputs)

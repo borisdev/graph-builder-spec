@@ -53,7 +53,10 @@ class Log:
 
 
 complaint = VariableSpec("complaint", str)
-verdict = VariableSpec("verdict", object)
+verdict = VariableSpec("verdict", Urgent | Routine)
+"""⚠️ The UNION, not `object`. `object` would switch type checking off for this
+variable and say nothing — and the union is also the more honest declaration: these
+are exactly the two things `route` branches on."""
 handled = VariableSpec("handled", str)
 report_out = VariableSpec("report_out", str)
 
