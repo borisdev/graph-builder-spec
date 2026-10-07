@@ -5,6 +5,60 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — `check_boundary_types`, the 13th rule
+
+A `GraphSpec`'s declared `input_type` / `output_type` are now compared against the variables the
+edges at START and END actually carry. They were never checked, and they go straight to
+`GraphBuilder`:
+
+```python
+class Lying(Greeting):              # every edge in Greeting carries str
+    input_type, output_type = int, int
+
+Lying().coherence_check()           # [] — before
+Lying().render(...).run_sync(inputs="  a  b  ")   # 'Hello, a  b!'  — a str
+```
+
+**A dead field would have been the small version.** `_port_type` reads those two fields as the
+ORACLE for `check_subgraphs`, so a check that does run — whose whole job is *"the child fits the
+node"* — was comparing a parent node's contract against the child's unverified claim about
+itself. Measured: a child declaring `output_type=int` while every edge in it carries `str` passed
+against a parent node declaring an int output, and the graph returned `'HELLO'`. Issue #21.
+
+Assignability, not identity, and the direction differs per side: the input may be **widened** on
+the way in (`input_type=list[int]` into an edge carrying `numbers: list` — `examples/parallel.py`
+does this), the output **narrowed** on the way out (`report: str` reaching `output_type=object` —
+`examples/ladder/stage10_no_basenode.py` does this).
+
+⚠️ **The default `type(None)` is a claim, not an absence.** A design that never declares a
+boundary and then wires a `str` across it is now reported, because that default reaches the
+engine as the graph's real signature.
+
+### Fixed — `_produces` called two spellings of one type undecidable
+
+`list[int] is list[int]` is `False`, so identity alone reported *not decidable* for literally the
+same type; and a parameterised alias was never compared against a bare declared type, although
+`list[int]` plainly IS a `list`. Both now decide. This can only turn an undecidable into a
+verdict — it cannot manufacture a finding where there was none — and it is why
+`check_boundary_types` is clean on all 28 boundary crossings in `examples/` rather than printing
+a permanent `NOT CHECKED` line on `parallel.py`.
+
+`check_variable_types` reads the same helper and gains the same decidability.
+
+⚠️ Only a **runtime class** origin is compared. `get_origin` is `typing.Literal` for
+`Literal['ok']` and `typing.Annotated` for `Annotated[int, 'tag']`, and `issubclass` on either
+raises — which the first cut of this did, through `coherence_check()`, a method documented
+*"Never raises."* Those wrappers stay undecidable rather than being unwrapped; nothing has needed
+unwrapping yet.
+
+### Fixed — `_type_name` rendered `list[int]` and `list` identically
+
+Its docstring said generic aliases have no `__name__`. Since 3.10 they do, and it is the bare
+origin — so the bug was a WRONG name rather than a missing one, and a finding comparing those two
+types read as a complaint that `list` is not `list`. Found while writing the message for the
+check above, which compares exactly that pair.
+
+
 ## [0.3.0] — 2026-10-01
 
 ### ⛔ Breaking — `check()` is renamed to `coherence_check()`

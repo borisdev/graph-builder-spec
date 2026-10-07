@@ -33,7 +33,7 @@ from workflow_workbench.spec import (
 __all__ = ["CoherenceFinding", "blocking", "NOT_CHECKED",
            "check_names", "check_reachable", "check_variables", "check_bindings",
            "check_implementations", "check_subgraphs", "check_step_arity", "check_decisions",
-           "check_variable_types", "check_transform_edges",
+           "check_variable_types", "check_transform_edges", "check_boundary_types",
            "check_fan_out_rejoins", "check_recursion"]
 
 
@@ -172,9 +172,19 @@ def _about(spec: Any) -> str:
 
 
 def _type_name(t: Any) -> str:
-    """A stable name for a type in a finding. `__name__` misses generic aliases like
-    `list[Fact]`, which have none — and printing `<class ...>` for one and a bare name for the
-    other makes two findings about the same mistake look like two different mistakes."""
+    """A stable name for a type in a finding. Printing `<class ...>` for one kind and a bare name
+    for another makes two findings about the same mistake look like two different mistakes.
+
+    ⛔ Corrected: this said generic aliases "have none". Since 3.10 `list[Fact].__name__` is
+    `'list'` — so the bug was not a missing name, it was a WRONG one, and `__name__` alone
+    rendered `list[int]` and `list` identically. A finding comparing those two then read as a
+    complaint that `list` is not `list`. Measured on 3.13 while adding `check_boundary_types`,
+    whose message compares exactly that pair.
+    """
+    import typing
+
+    if typing.get_origin(t) is not None:
+        return repr(t)
     return getattr(t, "__name__", None) or repr(t)
 
 
@@ -736,8 +746,13 @@ def _produces(annotation: Any, declared: Any) -> bool | None:
     """
     import typing
 
-    if declared is object or annotation is declared:
+    if declared is object or annotation is declared or annotation == declared:
         return True                          # `object` accepts anything; identity is identity
+
+    # EQUALITY above, not just identity. `list[int] is list[int]` is False — each expression
+    # builds a new alias object — so identity alone reported "not decidable" for two spellings
+    # of literally the same type. Equality can only turn an undecidable into True, never into a
+    # finding, so it cannot manufacture a false alarm.
 
     origin = typing.get_origin(annotation)
     if origin is typing.Union or type(annotation).__name__ == "UnionType":
@@ -750,7 +765,117 @@ def _produces(annotation: Any, declared: Any) -> bool | None:
     if isinstance(annotation, type) and isinstance(declared, type):
         return issubclass(annotation, declared)
 
-    return None                              # generic aliases, TypeVars, exotic forms
+    # A parameterised alias satisfies a BARE declared type: `list[int]` IS a `list`, which is
+    # `examples/parallel.py`'s real shape — `input_type=list[int]` crossing an edge that carries
+    # `numbers: list`. Only the ORIGIN is compared, so nothing is claimed about the parameter;
+    # `list[int]` against a declared `list[str]` stays undecidable, which is honest.
+    #
+    # ⛔ `isinstance(origin, type)` IS THE GUARD, and the first cut of this branch did not have
+    # it. `get_origin` does not always return a runtime class: it is `typing.Literal` for
+    # `Literal['ok']` and `typing.Annotated` for `Annotated[int, 'tag']`, and `issubclass` on
+    # either RAISES `TypeError: issubclass() arg 1 must be a class`. That reached
+    # `coherence_check()`, which is documented "Never raises" — so a step annotated
+    # `-> Literal['ok', 'no']` crashed the check rather than being reported. Caught by Copilot on
+    # #22; measured before and after.
+    #
+    # Those wrappers stay UNDECIDABLE rather than being normalized to their argument. Unwrapping
+    # `Annotated` is a real improvement and nothing has needed it — `.claude/rules/project.md`:
+    # add the guard when you have the failing case, not when you foresee one.
+    if isinstance(origin, type) and isinstance(declared, type):
+        return issubclass(origin, declared)
+
+    return None                              # TypeVars, parameterised-vs-parameterised, exotica
+
+
+def check_boundary_types(parent: Any) -> list[CoherenceFinding]:
+    """The graph's declared `input_type` / `output_type` match what crosses START and END.
+
+    ⛔ WHY THIS EXISTS, measured before it was written. These two fields go STRAIGHT to
+    `GraphBuilder`, and nothing compared them to the design they belong to:
+
+        class Lying(Greeting):                  # every edge in Greeting carries str
+            input_type, output_type = int, int
+
+        coherence_check()           -> []
+        run_sync(inputs='  a  b  ') -> 'Hello, a  b!'          <- a str
+
+    ⚠️ And a dead field would have been the small version. `_port_type` compares a parent node's
+    contract against `child.input_type` / `child.output_type`, so `check_subgraphs` — a check
+    that DOES run, whose whole job is "the child fits the node" — was reading an oracle nothing
+    verified. Measured: a child declaring `output_type=int` while every edge in it carries `str`
+    passes against a parent node declaring an int output, and the graph returns `'HELLO'`.
+
+    The defect is not that a rule was missing. The rule existed and was carefully worded; what
+    was missing is that **nobody checked the thing being compared against.**
+
+    ⚠️ Assignability, not identity, and the direction differs per side:
+
+        input    the graph RECEIVES `input_type` and the edge carries it onward, so the carried
+                 variable may be WIDER. `input_type=list[int]` into `numbers: list` is correct,
+                 and `examples/parallel.py` really does that.
+        output   the edge DELIVERS and the graph promises, so the delivered type may be
+                 NARROWER. `report: str` reaching an `output_type=object` is correct, and
+                 `examples/ladder/stage10_no_basenode.py` really does that.
+
+    ⚠️ Reuses `_produces` rather than deciding assignability itself. A second, narrower copy of a
+    rule written beside the thing it guards is this repo's recurring defect — see the Copilot
+    findings on #8, #18 and #19 — and `_produces` already handles `object`, unions, `issubclass`
+    and the undecidable generic alias that would otherwise be a false alarm on `parallel.py`.
+
+    ⚠️ The default is `type(None)`, and that is a CLAIM, not an absence. It reaches `GraphBuilder`
+    as the graph's real signature, so a design that never declares a boundary and then wires a
+    `str` across it is reported. There is no third state to tell apart from a deliberate
+    `None`-in / `None`-out design, and inventing one would be a declaration for something nobody
+    has needed.
+
+    ⚠️ What arrives at END is `delivers` when an edge sets it, `carries` otherwise — a
+    `TransformEdgeSpec` reshapes ON THE WIRE, so the carried type is not what the caller gets.
+
+    ⚠️ `about=""` — a finding about the WHOLE DESIGN, which is what a boundary declaration is.
+    `about="input_type"` was written first and reverted: `about` is documented to hold a node /
+    join / decision name, `source->target` for an edge, a strategy name, or `""`, and
+    `test_every_finding_names_something_the_caller_can_look_up` enforces exactly that set. A port
+    name is a FIFTH kind, and quietly adding one to a field other code resolves is a vocabulary
+    change — propose it, do not slip it in. The side is in the sentence, where a reader needs it.
+    """
+    findings: list[CoherenceFinding] = []
+    unchecked: list[str] = []
+
+    for side in ("input", "output"):
+        if side == "input":
+            declared = parent.input_type
+            crossing = [(e, e.carries) for e in parent.edges if isinstance(e.source, _Start)]
+            port = "input_type"
+        else:
+            declared = parent.output_type
+            crossing = [(e, getattr(e, "delivers", None) or e.carries)
+                        for e in parent.edges if isinstance(e.target, _End)]
+            port = "output_type"
+
+        for _edge, var in crossing:
+            # input:  the declared type is handed to the edge, so IT must satisfy the variable.
+            # output: the edge hands its value back, so the VARIABLE must satisfy the declared.
+            verdict = (_produces(declared, var.type) if side == "input"
+                       else _produces(var.type, declared))
+            if verdict is None:
+                unchecked.append(
+                    f"{port} {_type_name(declared)} vs {var.name}: {_type_name(var.type)}")
+            elif verdict is False:
+                findings.append(CoherenceFinding(
+                    f"this design declares {port} {_type_name(declared)}, but the edge at "
+                    f"{'START' if side == 'input' else 'END'} {'carries' if side == 'input' else 'delivers'} "
+                    f"{var.name!r} ({_type_name(var.type)}). {port} is what reaches "
+                    f"`GraphBuilder` and what a parent design is checked against, so one of the "
+                    f"two is wrong — and until now neither was checked.",
+                    check="check_boundary_types"))
+
+    if unchecked:
+        findings.append(CoherenceFinding(
+            "NOT CHECKED — boundary types were not compared for: " + "; ".join(sorted(unchecked))
+            + ". A generic alias has no class to test against, and guessing either way would "
+            "land a false alarm on correct code.",
+            check="check_boundary_types"))
+    return findings
 
 
 def check_variable_types(parent: Any, strategy: StrategySpec) -> list[CoherenceFinding]:

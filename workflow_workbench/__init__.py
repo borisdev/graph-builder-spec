@@ -17,6 +17,7 @@ from workflow_workbench.checks import (
     NOT_CHECKED,
     CoherenceFinding,
     blocking,
+    check_boundary_types,
     check_bindings,
     check_fan_out_rejoins,
     check_recursion,
@@ -61,6 +62,6 @@ __all__ = [
     "check_names", "check_reachable", "check_variables", "check_bindings",
     "check_implementations", "check_subgraphs", "check_step_arity", "check_decisions",
     "check_variable_types", "check_transform_edges", "check_fan_out_rejoins",
-    "check_recursion",
+    "check_recursion", "check_boundary_types",
     "diagram", "diff_diagram",
 ]

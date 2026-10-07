@@ -18,7 +18,7 @@ shape and its data contracts as **data**, before any step exists — which is wh
 of defect findable:
 
 ```python
-spec.coherence_check()      # 12 well-formedness rules, 7 of them with nothing implemented
+spec.coherence_check()      # 13 well-formedness rules, 8 of them with nothing implemented
 spec.diagram()              # a picture of the same declaration
 spec.render(strategy)       # refuses outright if anything blocks
 ```
@@ -39,7 +39,7 @@ Four problems, and the same declaration answers all four:
 
 | | |
 |---|---|
-| **An agent's output works and is incoherent.** Each piece is locally fine; the whole does not add up. | `coherence_check()` — 12 [well-formedness rules](docs/glossary.md#well-formedness-rule), 7 needing nothing implemented |
+| **An agent's output works and is incoherent.** Each piece is locally fine; the whole does not add up. | `coherence_check()` — 13 [well-formedness rules](docs/glossary.md#well-formedness-rule), 8 needing nothing implemented |
 | **A reasoning strategy cannot be asserted correct — only compared.** There is no right answer to diff against, so "better" is an empirical question. | [`eval_battle()`](docs/glossary.md#battle) — same cases, same evaluators, plus a replicate arm as the [noise floor](docs/glossary.md#noise-floor) |
 | **Complexity grows unless pieces are reused.** Two arms that differ in one stage should say so, not be two files. | the [data language](docs/glossary.md#deep-embedding): declare a role once, bind it many ways; `SubgraphBinding` reuses a whole child design as one node |
 | **You cannot see what you built.** | `diagram()` and `diff_diagram()`, from the declaration alone |
@@ -238,9 +238,9 @@ missed.
 <summary><strong>Every rule — generated from each check's own docstring</strong></summary>
 
 <!-- rules:start -->
-**12 rules.** `coherence_check()` returns one finding per violation and an empty list for a clean design; `render()` refuses on any finding that blocks.
+**13 rules.** `coherence_check()` returns one finding per violation and an empty list for a clean design; `render()` refuses on any finding that blocks.
 
-**7 need no implementations at all** — runnable the moment `nodes` and `edges` are written.
+**8 need no implementations at all** — runnable the moment `nodes` and `edges` are written.
 
 | check | rule |
 |---|---|
@@ -250,6 +250,7 @@ missed.
 | `check_step_arity` | A step body receives exactly ONE value, so a node cannot consume two inputs at once. |
 | `check_decisions` | `when` appears exactly on the edges leaving a decision, and nowhere else. |
 | `check_transform_edges` | A transform edge is fixed (`apply=`) or a variation point (bound) — exactly one. |
+| `check_boundary_types` | The graph's declared `input_type` / `output_type` match what crosses START and END. |
 | `check_fan_out_rejoins` | Everything a fan-out produces must reach a join before it reaches END. |
 
 **5 more once a strategy exists**, checking the implementations against the roles they fill.
