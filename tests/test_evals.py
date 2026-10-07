@@ -6,7 +6,8 @@ import pytest
 from pydantic_evals import Case, Dataset
 from pydantic_evals.evaluators import Evaluator, EvaluatorContext
 
-from graph_builder_spec import END, START, EdgeSpec, GraphSpec, StepSpec, StrategySpec, VariableSpec
+from graph_builder_spec import (END, START, EdgeSpec, GraphSpec, SpecError, StepSpec,
+                                 StrategySpec, VariableSpec)
 from graph_builder_spec.evals import BattleResult, eval_battle, pairwise_battle
 
 text = VariableSpec("text", str)
@@ -178,3 +179,52 @@ class _Report:
 
 def _fake_report(per_case: dict[str, float]) -> _Report:
     return _Report(per_case)
+
+
+# ── run_count: N runs, N numbers, no verdict ────────────────────────────────────────────────
+
+def test_run_count_reports_every_run_and_editorialises_about_none_of_them() -> None:
+    """#11, re-specced. Boris, 2026-10-07: *"JUST SIMPLY REPORT 3 runs 3 numbers .... w a
+    optional arg for run_count=int."*
+
+    ⛔ What this asserts is as much about what is ABSENT as what is present: there is no mean, no
+    spread, no winner and no refusal. The earlier design ran an automatic A/A arm and declined to
+    name a winner inside the noise — a judgement made on the caller's behalf, at 50% more compute
+    on every battle. Three numbers are strictly more information than a verdict derived from them.
+    """
+    from examples.greeting import Greeting, dataset, normalize_spaces, trim_only
+
+    spec, data = Greeting(), dataset()
+    r = eval_battle(spec, trim_only, normalize_spaces, data, run_count=3)
+
+    scores = r.run_scores()
+    assert set(scores) == {"trim_only", "normalize_spaces"}
+    for arm, metrics in scores.items():
+        for metric, values in metrics.items():
+            assert len(values) == 3, f"{arm}/{metric} gave {len(values)} runs, not 3"
+    # deterministic implementations, so all three agree — which is the signal, not a problem
+    assert scores["trim_only"]["ExactMatch"] == [0.5, 0.5, 0.5]
+    assert scores["normalize_spaces"]["ExactMatch"] == [1.0, 1.0, 1.0]
+
+    assert not hasattr(r, "mean"), "a mean would hide exactly what run_count exists to show"
+    assert not hasattr(r, "winner"), "naming a winner is the caller's call, not this layer's"
+
+
+def test_run_count_defaults_to_one_so_this_is_additive() -> None:
+    """Every existing caller keeps its behaviour, and `report_a` stays the first run."""
+    from examples.greeting import Greeting, dataset, normalize_spaces, trim_only
+
+    spec, data = Greeting(), dataset()
+    r = eval_battle(spec, trim_only, normalize_spaces, data)
+    assert all(len(v) == 1 for m in r.run_scores().values() for v in m.values())
+    assert r.deltas()["ExactMatch"] == pytest.approx(0.50)
+    assert r.report_a is not None and r.report_b is not None
+
+
+def test_run_count_below_one_is_refused_rather_than_silently_doing_nothing() -> None:
+    """`run_count=0` would return a result with no runs in it — a battle that measured nothing,
+    reported as a battle. `checks.md`: a skipped check must never render as a value."""
+    from examples.greeting import Greeting, dataset, normalize_spaces, trim_only
+
+    with pytest.raises(SpecError):
+        eval_battle(Greeting(), trim_only, normalize_spaces, dataset(), run_count=0)

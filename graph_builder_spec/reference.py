@@ -55,6 +55,7 @@ GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
 NOT_THE_LANGUAGE: dict[str, str] = {
     "SpecError": "raised BY the language, not part of writing one",
     "CoherenceFinding": "what a check returns — the second table's subject",
+    "PotentialIncoherence": "what a finding SAYS, not what you declare — the second table",
     "blocking": "a filter over findings",
     "NOT_CHECKED": "the prefix marking a stated gap",
     "diagram": "output, not declaration",

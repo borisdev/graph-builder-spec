@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import pytest
 
+from graph_builder_spec.checks import PotentialIncoherence as P
 from graph_builder_spec import (
     END,
     START,
@@ -291,7 +292,7 @@ def test_a_finding_is_still_a_string_everywhere_it_was_one():
     and none of them was edited. If this test fails, the subclass stopped being additive.
     """
     msg = "node 'orphan' is unreachable from START — it never runs."
-    f = CoherenceFinding(msg, check="check_reachable", about="orphan")
+    f = CoherenceFinding(msg, potential_incoherence=P.UNREACHABLE_FROM_START, about="orphan")
 
     assert f == msg and str(f) == msg          # value equality, byte-for-byte text
     assert "unreachable" in f                  # substring containment
@@ -303,10 +304,12 @@ def test_a_finding_is_still_a_string_everywhere_it_was_one():
 
 
 def test_blocking_is_derived_and_not_checked_is_the_only_non_blocking_kind():
-    assert CoherenceFinding("anything at all", check="c").blocking
-    assert not CoherenceFinding(f"{NOT_CHECKED} — we could not look", check="c").blocking
+    assert CoherenceFinding("anything at all", potential_incoherence=P.DUPLICATE_NODE_NAME).blocking
+    assert not CoherenceFinding(f"{NOT_CHECKED} — we could not look",
+                               potential_incoherence=P.RETURN_TYPE_NOT_CHECKED).blocking
     # A stated gap and a clean pass must not read the same — `.claude/rules/checks.md`.
-    assert blocking([CoherenceFinding(f"{NOT_CHECKED} — x", check="c")]) == []
+    assert blocking([CoherenceFinding(f"{NOT_CHECKED} — x",
+                                      potential_incoherence=P.RETURN_TYPE_NOT_CHECKED)]) == []
 
 
 def test_a_finding_survives_pickle_and_copy_like_the_plain_string_it_replaced():
@@ -321,7 +324,8 @@ def test_a_finding_survives_pickle_and_copy_like_the_plain_string_it_replaced():
     import copy
     import pickle
 
-    f = CoherenceFinding("node 'orphan' is unreachable from START", check="check_reachable",
+    f = CoherenceFinding("node 'orphan' is unreachable from START",
+                         potential_incoherence=P.UNREACHABLE_FROM_START,
                          about="orphan")
     for rebuilt in (pickle.loads(pickle.dumps(f)), copy.copy(f), copy.deepcopy(f)):
         assert type(rebuilt) is CoherenceFinding
@@ -330,7 +334,8 @@ def test_a_finding_survives_pickle_and_copy_like_the_plain_string_it_replaced():
         assert rebuilt.blocking is f.blocking          # derived, so it must survive too
 
     # a whole list of them, which is how a process pool would actually move findings
-    many = [f, CoherenceFinding(f"{NOT_CHECKED} — we could not look", check="c")]
+    many = [f, CoherenceFinding(f"{NOT_CHECKED} — we could not look",
+                              potential_incoherence=P.RETURN_TYPE_NOT_CHECKED)]
     assert [str(x) for x in pickle.loads(pickle.dumps(many))] == [str(x) for x in many]
     assert blocking(pickle.loads(pickle.dumps(many))) == [f]
 
@@ -341,14 +346,16 @@ def test_blocking_cannot_be_set_to_disagree_with_the_filter():
     readings of one fact is what this type exists to remove, so it is a read-only property."""
     import pytest
 
-    f = CoherenceFinding("node 'x' is unreachable from START", check="check_reachable")
+    f = CoherenceFinding("node 'x' is unreachable from START",
+                         potential_incoherence=P.UNREACHABLE_FROM_START)
     assert f.blocking
     with pytest.raises(AttributeError):
         f.blocking = False                     # type: ignore[misc]
     # and the two readings still agree, which is the property the field is for
     assert f.blocking is (blocking([f]) == [f])
 
-    gap = CoherenceFinding(f"{NOT_CHECKED} — we could not look", check="c")
+    gap = CoherenceFinding(f"{NOT_CHECKED} — we could not look",
+                           potential_incoherence=P.RETURN_TYPE_NOT_CHECKED)
     assert not gap.blocking and blocking([gap]) == []
 
 

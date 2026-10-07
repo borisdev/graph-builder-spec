@@ -10,6 +10,8 @@ fix it.
 """
 from __future__ import annotations
 
+from enum import StrEnum
+
 import inspect
 from collections.abc import Callable, Iterable
 from typing import Any, TypeVar
@@ -31,7 +33,7 @@ from graph_builder_spec.spec import (
     is_sentinel,
 )
 
-__all__ = ["CoherenceFinding", "blocking", "NOT_CHECKED",
+__all__ = ["CoherenceFinding", "PotentialIncoherence", "blocking", "NOT_CHECKED",
            "check_names", "check_reachable", "check_variables", "check_bindings",
            "check_implementations", "check_subgraphs", "check_step_arity", "check_decisions",
            "check_variable_types", "check_transform_edges", "check_boundary_types",
@@ -53,6 +55,113 @@ def _is_blocking(message: str) -> bool:
     return not message.startswith(NOT_CHECKED)
 
 
+
+class PotentialIncoherence(StrEnum):
+    """WHAT might be wrong — one member per distinct defect, not one per check function.
+
+    ⛔ WHY 33 MEMBERS AND NOT 13. There are 13 check functions, and naming the field after the
+    CHECKER would have been a third of the information: `check_reachable` alone reports five
+    different things to fix, and `potential_incoherence="check_reachable"` names a function rather
+    than an incoherence — a field promising more precision than its value delivers, which is the
+    failure this package exists to catch.
+
+    A `StrEnum`, so `f.potential_incoherence == "unreachable_from_start"` is True, it serialises
+    into the payload with no encoder, and every existing string comparison keeps working. Same
+    reasoning as `CoherenceFinding` being a `str` subclass.
+
+    ⚠️ `*_NOT_CHECKED` members are STATED GAPS, not defects — the absence of a verdict. They are
+    in here because every finding needs a value and `blocking` already tells them apart. The
+    alternative considered and rejected: `potential_incoherence=None` for a gap, which is arguably
+    more honest and makes every consumer handle `None` for a distinction they already have.
+    """
+
+    # check_recursion
+    RECURSIVE_BINDING = "recursive_binding"
+    # check_names
+    DUPLICATE_NODE_NAME = "duplicate_node_name"
+    # check_reachable
+    NOTHING_LEAVES_START = "nothing_leaves_start"
+    NOTHING_REACHES_END = "nothing_reaches_end"
+    UNREACHABLE_FROM_START = "unreachable_from_start"
+    NO_PATH_TO_END = "no_path_to_end"
+    EDGE_REFERENCES_UNDECLARED_NODE = "edge_references_undeclared_node"
+    # check_variables
+    SOURCE_DOES_NOT_DECLARE_CARRIED = "source_does_not_declare_carried"
+    TARGET_DOES_NOT_CONSUME_DELIVERED = "target_does_not_consume_delivered"
+    # check_bindings
+    NODE_NOT_BOUND = "node_not_bound"
+    BINDING_FOR_UNDECLARED_NODE = "binding_for_undeclared_node"
+    # check_implementations
+    IMPLEMENTATION_WRONG_ARITY = "implementation_wrong_arity"
+    IMPLEMENTATION_NOT_CHECKED = "implementation_not_checked"
+    # check_subgraphs
+    CHILD_PORT_NOT_SINGLE = "child_port_not_single"
+    CHILD_PORT_NOT_CHECKED = "child_port_not_checked"
+    CHILD_INPUT_MISMATCH = "child_input_mismatch"
+    CHILD_OUTPUT_MISMATCH = "child_output_mismatch"
+    CHILD_STATE_OR_DEPS_MISMATCH = "child_state_or_deps_mismatch"
+    # check_decisions
+    DECISION_HAS_NO_BRANCHES = "decision_has_no_branches"
+    BRANCH_WITHOUT_WHEN = "branch_without_when"
+    AMBIGUOUS_BRANCH_TYPE = "ambiguous_branch_type"
+    WHEN_ON_A_NON_DECISION_EDGE = "when_on_a_non_decision_edge"
+    # check_step_arity
+    STEP_DECLARES_SEVERAL_INPUTS = "step_declares_several_inputs"
+    CONCURRENT_ARRIVALS_WITHOUT_JOIN = "concurrent_arrivals_without_join"
+    # check_boundary_types
+    BOUNDARY_IS_OBJECT = "boundary_is_object"
+    BOUNDARY_TYPE_MISMATCH = "boundary_type_mismatch"
+    BOUNDARY_TYPE_NOT_CHECKED = "boundary_type_not_checked"
+    # check_variable_types
+    RETURN_TYPE_MISMATCH = "return_type_mismatch"
+    RETURN_TYPE_NOT_CHECKED = "return_type_not_checked"
+    # check_transform_edges
+    TRANSFORM_BOTH_FIXED_AND_BOUND = "transform_both_fixed_and_bound"
+    TRANSFORM_NEITHER_FIXED_NOR_BOUND = "transform_neither_fixed_nor_bound"
+    TRANSFORM_IS_ASYNC = "transform_is_async"
+    # check_fan_out_rejoins
+    FAN_OUT_REACHES_END_WITHOUT_JOIN = "fan_out_reaches_end_without_join"
+
+
+_OWNER: dict[PotentialIncoherence, str] = {
+    PotentialIncoherence.RECURSIVE_BINDING: "check_recursion",
+    PotentialIncoherence.DUPLICATE_NODE_NAME: "check_names",
+    PotentialIncoherence.NOTHING_LEAVES_START: "check_reachable",
+    PotentialIncoherence.NOTHING_REACHES_END: "check_reachable",
+    PotentialIncoherence.UNREACHABLE_FROM_START: "check_reachable",
+    PotentialIncoherence.NO_PATH_TO_END: "check_reachable",
+    PotentialIncoherence.EDGE_REFERENCES_UNDECLARED_NODE: "check_reachable",
+    PotentialIncoherence.SOURCE_DOES_NOT_DECLARE_CARRIED: "check_variables",
+    PotentialIncoherence.TARGET_DOES_NOT_CONSUME_DELIVERED: "check_variables",
+    PotentialIncoherence.NODE_NOT_BOUND: "check_bindings",
+    PotentialIncoherence.BINDING_FOR_UNDECLARED_NODE: "check_bindings",
+    PotentialIncoherence.IMPLEMENTATION_WRONG_ARITY: "check_implementations",
+    PotentialIncoherence.IMPLEMENTATION_NOT_CHECKED: "check_implementations",
+    PotentialIncoherence.CHILD_PORT_NOT_SINGLE: "check_subgraphs",
+    PotentialIncoherence.CHILD_PORT_NOT_CHECKED: "check_subgraphs",
+    PotentialIncoherence.CHILD_INPUT_MISMATCH: "check_subgraphs",
+    PotentialIncoherence.CHILD_OUTPUT_MISMATCH: "check_subgraphs",
+    PotentialIncoherence.CHILD_STATE_OR_DEPS_MISMATCH: "check_subgraphs",
+    PotentialIncoherence.DECISION_HAS_NO_BRANCHES: "check_decisions",
+    PotentialIncoherence.BRANCH_WITHOUT_WHEN: "check_decisions",
+    PotentialIncoherence.AMBIGUOUS_BRANCH_TYPE: "check_decisions",
+    PotentialIncoherence.WHEN_ON_A_NON_DECISION_EDGE: "check_decisions",
+    PotentialIncoherence.STEP_DECLARES_SEVERAL_INPUTS: "check_step_arity",
+    PotentialIncoherence.CONCURRENT_ARRIVALS_WITHOUT_JOIN: "check_step_arity",
+    PotentialIncoherence.BOUNDARY_IS_OBJECT: "check_boundary_types",
+    PotentialIncoherence.BOUNDARY_TYPE_MISMATCH: "check_boundary_types",
+    PotentialIncoherence.BOUNDARY_TYPE_NOT_CHECKED: "check_boundary_types",
+    PotentialIncoherence.RETURN_TYPE_MISMATCH: "check_variable_types",
+    PotentialIncoherence.RETURN_TYPE_NOT_CHECKED: "check_variable_types",
+    PotentialIncoherence.TRANSFORM_BOTH_FIXED_AND_BOUND: "check_transform_edges",
+    PotentialIncoherence.TRANSFORM_NEITHER_FIXED_NOR_BOUND: "check_transform_edges",
+    PotentialIncoherence.TRANSFORM_IS_ASYNC: "check_transform_edges",
+    PotentialIncoherence.FAN_OUT_REACHES_END_WITHOUT_JOIN: "check_fan_out_rejoins",
+}
+"""Which check owns each incoherence. ONE table, so `check` is DERIVED and cannot drift from
+`potential_incoherence` — storing both independently is how one concept gets two names."""
+
+
 class CoherenceFinding(str):
     """One thing a check found, carrying what a caller needs instead of making them regex it out.
 
@@ -66,7 +175,11 @@ class CoherenceFinding(str):
     overridden. The 221 existing tests assert finding substrings, and the examples print whole
     lists of them — that is a real oracle for this change only as long as neither rendering moves.
 
-        check      the producing function's name, e.g. "check_variables"
+        potential_incoherence   WHAT might be wrong. A `PotentialIncoherence` member — 33 of
+                                them, one per distinct defect rather than one per check.
+        check                   DERIVED: which check owns that incoherence, e.g.
+                                "check_variables". Looked up in `_OWNER`, never stored, so it
+                                cannot drift from `potential_incoherence`.
         about      a node / join / decision `name`; "source->target" for an edge; the strategy
                    `name`; "" for a finding about the whole design
         blocking   derived: False for a stated gap (`NOT CHECKED — …`), True for a defect.
@@ -78,16 +191,28 @@ class CoherenceFinding(str):
     exists to remove. Deriving it on read means they cannot differ.
     """
 
-    __slots__ = ("check", "about")
+    __slots__ = ("potential_incoherence", "about")
 
-    check: str
+    potential_incoherence: PotentialIncoherence
     about: str
 
-    def __new__(cls, message: str, *, check: str, about: str = "") -> CoherenceFinding:
+    def __new__(cls, message: str, *, potential_incoherence: PotentialIncoherence,
+                about: str = "") -> CoherenceFinding:
         self = super().__new__(cls, message)
-        self.check = check
+        self.potential_incoherence = potential_incoherence
         self.about = about
         return self
+
+    @property
+    def check(self) -> str:
+        """Which check owns this incoherence. DERIVED from `_OWNER`, not stored.
+
+        ⚠️ Kept as a read-only property rather than deleted: ~30 assertions here and in both
+        downstream repos read `f.check`, and every one of them keeps working unchanged. Deriving
+        it is also what makes the pair unable to disagree — the same argument `blocking` already
+        rests on.
+        """
+        return _OWNER[self.potential_incoherence]
 
     @property
     def blocking(self) -> bool:
@@ -105,12 +230,14 @@ class CoherenceFinding(str):
         not move" simply did not include them. An incomplete oracle is the failure here, not a
         missing feature — `.claude/rules/checks.md`.
         """
-        return _rebuild_finding, (str(self), self.check, self.about)
+        return _rebuild_finding, (str(self), self.potential_incoherence, self.about)
 
 
-def _rebuild_finding(message: str, check: str, about: str) -> CoherenceFinding:
+def _rebuild_finding(message: str, potential_incoherence: PotentialIncoherence,
+                     about: str) -> CoherenceFinding:
     """`CoherenceFinding.__reduce__`'s callable. Module-level because pickle resolves it by name."""
-    return CoherenceFinding(message, check=check, about=about)
+    return CoherenceFinding(message, potential_incoherence=potential_incoherence,
+                            about=about)
 
 
 def blocking(findings: Iterable[_F]) -> list[_F]:
@@ -155,7 +282,7 @@ def check_recursion(graph: Any, strategy: StrategySpec,
         f"{strategy.name!r} appears inside its own subgraph chain. Rendering it would "
         f"build child graphs until the stack ran out — a design cannot implement one of "
         f"its own nodes with itself.",
-        check="check_recursion", about=strategy.name)]
+        potential_incoherence=PotentialIncoherence.RECURSIVE_BINDING, about=strategy.name)]
 
 
 def _name(ep: Any) -> str:
@@ -207,7 +334,7 @@ def check_names(nodes: tuple[NodeSpec, ...]) -> list[CoherenceFinding]:
                 f"{len(group)} different nodes are named {name!r}. Node names become graph node "
                 f"ids, so this cannot be rendered — and because StepSpec is identity-keyed these "
                 f"really are separate nodes, not one node declared twice.",
-                check="check_names", about=name))
+                potential_incoherence=PotentialIncoherence.DUPLICATE_NODE_NAME, about=name))
     return findings
 
 
@@ -247,11 +374,11 @@ def check_reachable(nodes: tuple[NodeSpec, ...],
     if not starts:
         findings.append(CoherenceFinding(
             "no edge leaves START — nothing in this design can ever run.",
-            check="check_reachable"))
+            potential_incoherence=PotentialIncoherence.NOTHING_LEAVES_START))
     if not ends:
         findings.append(CoherenceFinding(
             "no edge reaches END — this design produces no output.",
-            check="check_reachable"))
+            potential_incoherence=PotentialIncoherence.NOTHING_REACHES_END))
 
     from_start: set[int] = set()
     for s in starts:
@@ -265,12 +392,12 @@ def check_reachable(nodes: tuple[NodeSpec, ...],
             findings.append(CoherenceFinding(
                 f"node {n.name!r} is unreachable from START — its implementation never runs, so a "
                 f"strategy that binds it will appear to work while doing nothing.",
-                check="check_reachable", about=n.name))
+                potential_incoherence=PotentialIncoherence.UNREACHABLE_FROM_START, about=n.name))
         if ends and id(n) not in to_end:
             findings.append(CoherenceFinding(
                 f"node {n.name!r} cannot reach END — whatever it produces is discarded, which is "
                 f"indistinguishable from a step that was never wired.",
-                check="check_reachable", about=n.name))
+                potential_incoherence=PotentialIncoherence.NO_PATH_TO_END, about=n.name))
 
     declared = {id(n) for n in nodes}
     for e in edges:
@@ -282,7 +409,7 @@ def check_reachable(nodes: tuple[NodeSpec, ...],
                 findings.append(CoherenceFinding(
                     f"edge {e!r} references node {_name(ep)!r}, which is not in `nodes`. "
                     f"An undeclared node is invisible to every other check and to any strategy.",
-                    check="check_reachable", about=_about_edge(e)))
+                    potential_incoherence=PotentialIncoherence.EDGE_REFERENCES_UNDECLARED_NODE, about=_about_edge(e)))
     return findings
 
 
@@ -313,7 +440,7 @@ def check_variables(nodes: tuple[NodeSpec, ...],
                     f"edge {e!r} carries {e.carries.name!r}, but {e.source.name!r} does not "
                     f"declare it as an output (it declares: {declared}). Either the edge is wired "
                     f"to the wrong variable or the node's contract is out of date.",
-                    check="check_variables", about=_about_edge(e)))
+                    potential_incoherence=PotentialIncoherence.SOURCE_DOES_NOT_DECLARE_CARRIED, about=_about_edge(e)))
         if not is_sentinel(e.target):
             # ⚠️ `delivers`, not `carries`. On a fan-out or a transform the two ends of one wire
             # carry DIFFERENT variables, and the target must be checked against what ARRIVES.
@@ -328,7 +455,7 @@ def check_variables(nodes: tuple[NodeSpec, ...],
                 findings.append(CoherenceFinding(
                     f"edge {e!r} delivers {arrives.name!r}{how} to {e.target.name!r}, which does "
                     f"not declare it as an input (it declares: {declared}).",
-                    check="check_variables", about=_about_edge(e)))
+                    potential_incoherence=PotentialIncoherence.TARGET_DOES_NOT_CONSUME_DELIVERED, about=_about_edge(e)))
     return findings
 
 
@@ -354,7 +481,7 @@ def check_bindings(bindables: tuple[Bindable, ...],
                 f"bound "
                 f"explicitly, including unchanged ones — a partial strategy makes 'what varies "
                 f"between these arms' unanswerable without reading both files.",
-                check="check_bindings", about=_about(n)))
+                potential_incoherence=PotentialIncoherence.NODE_NOT_BOUND, about=_about(n)))
     for nid, n in bound.items():
         if nid not in declared:
             findings.append(CoherenceFinding(
@@ -362,7 +489,7 @@ def check_bindings(bindables: tuple[Bindable, ...],
                 f"not declare. "
                 f"Most likely it was written against a different GraphSpec that has a node of the "
                 f"same name.",
-                check="check_bindings", about=strategy.name))
+                potential_incoherence=PotentialIncoherence.BINDING_FOR_UNDECLARED_NODE, about=strategy.name))
     return findings
 
 
@@ -384,7 +511,7 @@ def check_implementations(strategy: StrategySpec) -> list[CoherenceFinding]:
         if not callable(impl):
             findings.append(CoherenceFinding(
                 f"{strategy.name!r} binds {node.name!r} to {impl!r}, which is not callable.",
-                check="check_implementations", about=_about(node)))
+                potential_incoherence=PotentialIncoherence.IMPLEMENTATION_WRONG_ARITY, about=_about(node)))
             continue
         try:
             sig = inspect.signature(impl)
@@ -399,7 +526,7 @@ def check_implementations(strategy: StrategySpec) -> list[CoherenceFinding]:
                 f"{getattr(impl, '__qualname__', impl)}{sig}, which takes {len(positional)} "
                 f"required positional arguments. A pydantic-graph step body takes exactly one "
                 f"(`ctx`).",
-                check="check_implementations", about=_about(node)))
+                potential_incoherence=PotentialIncoherence.IMPLEMENTATION_NOT_CHECKED, about=_about(node)))
     return findings
 
 
@@ -490,7 +617,9 @@ def check_subgraphs(parent: Any, strategy: StrategySpec,
             if note is not None:
                 findings.append(CoherenceFinding(
                     note if note.startswith(NOT_CHECKED) else f"{where}, but {note}",
-                    check="check_subgraphs", about=_about(node)))
+                    potential_incoherence=(PotentialIncoherence.CHILD_PORT_NOT_CHECKED
+                                          if note.startswith(NOT_CHECKED)
+                                          else PotentialIncoherence.CHILD_PORT_NOT_SINGLE), about=_about(node)))
                 continue
             if child_type is not want:
                 verb = "accepts" if side == "input" else "produces"
@@ -498,7 +627,9 @@ def check_subgraphs(parent: Any, strategy: StrategySpec,
                     f"{where}, but the node {verb} {_type_name(want)} and the child graph "
                     f"declares {port} {_type_name(child_type)}. A subgraph is a valid "
                     f"implementation only when its public boundary matches the role it fills.",
-                    check="check_subgraphs", about=_about(node)))
+                    potential_incoherence=(PotentialIncoherence.CHILD_INPUT_MISMATCH
+                                          if side == "input"
+                                          else PotentialIncoherence.CHILD_OUTPUT_MISMATCH), about=_about(node)))
 
         for attr in ("state_type", "deps_type"):
             mine, theirs = getattr(parent, attr), getattr(child, attr)
@@ -509,7 +640,7 @@ def check_subgraphs(parent: Any, strategy: StrategySpec,
                     f"{attr.split('_')[0]} object, so the declared types must be identical — "
                     f"there is no conversion, and inventing one would make it ambiguous who owns "
                     f"a mutation.",
-                    check="check_subgraphs", about=_about(node)))
+                    potential_incoherence=PotentialIncoherence.CHILD_STATE_OR_DEPS_MISMATCH, about=_about(node)))
 
         # ⚠️ NOT re-tagged. A child's findings already name the check that produced them and the
         # node inside the CHILD they are about; overwriting either with the parent's node would
@@ -554,14 +685,14 @@ def check_decisions(decisions: tuple[DecisionSpec, ...],
             findings.append(CoherenceFinding(
                 f"decision {d.name!r} has no branches — no edge leaves it. It would route nothing "
                 f"and everything it was meant to reach is unreachable.",
-                check="check_decisions", about=d.name))
+                potential_incoherence=PotentialIncoherence.DECISION_HAS_NO_BRANCHES, about=d.name))
         for e in branches:
             if e.when is None:
                 findings.append(CoherenceFinding(
                     f"edge {e!r} leaves decision {d.name!r} without a `when=` type. A branch is "
                     f"chosen by the type of the routed value; without one there is nothing to "
                     f"match on and the branch cannot be built.",
-                    check="check_decisions", about=_about_edge(e)))
+                    potential_incoherence=PotentialIncoherence.BRANCH_WITHOUT_WHEN, about=_about_edge(e)))
         seen: dict[Any, int] = {}
         for e in branches:
             if e.when is not None:
@@ -571,7 +702,7 @@ def check_decisions(decisions: tuple[DecisionSpec, ...],
                 findings.append(CoherenceFinding(
                     f"decision {d.name!r} has {n} branches matching {_type_name(typ)}. Only the "
                     f"first can ever be taken; the rest are dead and read as coverage.",
-                    check="check_decisions", about=d.name))
+                    potential_incoherence=PotentialIncoherence.AMBIGUOUS_BRANCH_TYPE, about=d.name))
 
     for e in edges:
         if e.when is not None and id(e.source) not in declared:
@@ -579,7 +710,7 @@ def check_decisions(decisions: tuple[DecisionSpec, ...],
                 f"edge {e!r} carries `when={_type_name(e.when)}` but its source is not a "
                 f"DecisionSpec, so the condition is IGNORED — the declaration reads as "
                 f"conditional and the graph routes unconditionally.",
-                check="check_decisions", about=_about_edge(e)))
+                potential_incoherence=PotentialIncoherence.WHEN_ON_A_NON_DECISION_EDGE, about=_about_edge(e)))
     return findings
 
 
@@ -678,7 +809,7 @@ def check_step_arity(nodes: tuple[StepSpec, ...], edges: tuple[EdgeSpec, ...],
                 f"step body receives exactly one value — there is no invocation in which both "
                 f"arrive. Combining two arrivals is what a join is for; a step cannot express it, "
                 f"and the declaration reads as though it can.",
-                check="check_step_arity", about=n.name))
+                potential_incoherence=PotentialIncoherence.STEP_DECLARES_SEVERAL_INPUTS, about=n.name))
 
         arrivals = incoming.get(id(n), [])
         if len(arrivals) > 1 and _mutually_exclusive(arrivals, groups):
@@ -690,7 +821,7 @@ def check_step_arity(nodes: tuple[StepSpec, ...], edges: tuple[EdgeSpec, ...],
                 f"once PER EDGE with one value each time, and all but one result is discarded. "
                 f"Measured on exactly this shape: the step ran twice and the graph returned only "
                 f"the first. If the intent is to combine them, this is a join, not a step.",
-                check="check_step_arity", about=n.name))
+                potential_incoherence=PotentialIncoherence.CONCURRENT_ARRIVALS_WITHOUT_JOIN, about=n.name))
 
     return findings
 
@@ -888,7 +1019,7 @@ def check_boundary_types(parent: Any) -> list[CoherenceFinding]:
                 f"be checked at this boundary and nothing would say so. Declare the types that "
                 f"actually cross it, as a union if there are several: "
                 f"`output_type = NotAPlan | str`.",
-                check="check_boundary_types"))
+                potential_incoherence=PotentialIncoherence.BOUNDARY_IS_OBJECT))
             continue
 
         for _edge, var in crossing:
@@ -906,14 +1037,14 @@ def check_boundary_types(parent: Any) -> list[CoherenceFinding]:
                     f"{var.name!r} ({_type_name(var.type)}). {port} is what reaches "
                     f"`GraphBuilder` and what a parent design is checked against, so one of the "
                     f"two is wrong — and until now neither was checked.",
-                    check="check_boundary_types"))
+                    potential_incoherence=PotentialIncoherence.BOUNDARY_TYPE_MISMATCH))
 
     if unchecked:
         findings.append(CoherenceFinding(
             "NOT CHECKED — boundary types were not compared for: " + "; ".join(sorted(unchecked))
             + ". A generic alias has no class to test against, and guessing either way would "
             "land a false alarm on correct code.",
-            check="check_boundary_types"))
+            potential_incoherence=PotentialIncoherence.BOUNDARY_TYPE_NOT_CHECKED))
     return findings
 
 
@@ -972,7 +1103,7 @@ def check_variable_types(parent: Any, strategy: StrategySpec) -> list[CoherenceF
                 f"{_type_name(annotation)} — but {node.name!r} is declared to produce "
                 f"{_type_name(declared)}. The declaration is what the diagram draws and what a "
                 f"reader of this design believes; one of the two is wrong.",
-                check="check_variable_types", about=_about(node)))
+                potential_incoherence=PotentialIncoherence.RETURN_TYPE_MISMATCH, about=_about(node)))
 
     # ⚠️ `about=""` because this one line covers SEVERAL nodes — which is the whole reason it is
     # aggregated. Naming one of them would be a worse answer than naming none; the node names are
@@ -982,7 +1113,7 @@ def check_variable_types(parent: Any, strategy: StrategySpec) -> list[CoherenceF
             "NOT CHECKED — return types were not compared for: " + "; ".join(sorted(unchecked)) +
             ". An unannotated or unresolvable implementation cannot be checked against its "
             "declared output, and saying nothing would make that look like a pass.",
-            check="check_variable_types"))
+            potential_incoherence=PotentialIncoherence.RETURN_TYPE_NOT_CHECKED))
     return findings
 
 
@@ -1047,13 +1178,13 @@ def check_transform_edges(edges: tuple[EdgeSpec, ...],
             findings.append(CoherenceFinding(
                 f"{e!r} declares `apply=` AND is bound by strategy {strategy.name!r}. Exactly one "
                 f"— otherwise which of the two runs is a coin toss.",
-                check="check_transform_edges", about=_about_edge(e)))
+                potential_incoherence=PotentialIncoherence.TRANSFORM_BOTH_FIXED_AND_BOUND, about=_about_edge(e)))
         if e.apply is None and strategy is not None and not bound:
             findings.append(CoherenceFinding(
                 f"{e!r} has no `apply=` and no binding, so nothing reshapes the value. It would "
                 f"cross unchanged while the declaration says it becomes "
                 f"{e.delivers.name!r} — a lie the diagram would repeat.",
-                check="check_transform_edges", about=_about_edge(e)))
+                potential_incoherence=PotentialIncoherence.TRANSFORM_NEITHER_FIXED_NOR_BOUND, about=_about_edge(e)))
         fn = e.apply if e.apply is not None else (strategy[e] if bound else None)
         if fn is not None and inspect.iscoroutinefunction(fn):
             findings.append(CoherenceFinding(
@@ -1061,7 +1192,7 @@ def check_transform_edges(edges: tuple[EdgeSpec, ...],
                 f"await — pydantic-graph would not reject it, it would quietly pass a coroutine "
                 f"object to the next step. If it needs to await, it is a stage: give it a "
                 f"StepSpec.",
-                check="check_transform_edges", about=_about_edge(e)))
+                potential_incoherence=PotentialIncoherence.TRANSFORM_IS_ASYNC, about=_about_edge(e)))
     return findings
 
 
@@ -1121,5 +1252,5 @@ def check_fan_out_rejoins(nodes: tuple[NodeSpec, ...],
                 f"them, so all but one are discarded — silently, with the right answer's shape. "
                 f"Add a JoinSpec: a reducer `(current, input) -> current` is the only thing that "
                 f"can put them back together.",
-                check="check_fan_out_rejoins", about=_about_edge(e)))
+                potential_incoherence=PotentialIncoherence.FAN_OUT_REACHES_END_WITHOUT_JOIN, about=_about_edge(e)))
     return findings
