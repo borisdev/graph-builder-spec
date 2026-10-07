@@ -186,6 +186,21 @@ nothing yet stops you reporting one.
 
 The whole example: [`examples/greeting.py`](examples/greeting.py).
 
+### ⛔ PLACEHOLDER — there is no flagship example yet
+
+Stated rather than papered over, because it is the honest state and you would work it out in five
+minutes anyway. Every example in this repo teaches **one mechanism**: `greeting` is two steps that
+trim whitespace, `contestable` has the right shape and deliberately carries no score,
+`parallel` / `counter` / `subgraph` / the ladder rungs are one concept each.
+
+So the argument this page makes — *a stage worth declaring is a stage worth arguing about* — is
+currently illustrated entirely by stages not worth arguing about. **A real one comes after the
+vocabulary settles** (`GraphImplementation`, `GraphSpec.problem`, `run_count`), because a flagship
+written on top of names that are about to change gets rewritten.
+
+Tracked in [#24](https://github.com/borisdev/graph-builder-spec/issues/24), with the criteria a
+candidate has to satisfy.
+
 ## Quickstart
 
 Python 3.12 or newer, and [uv](https://docs.astral.sh/uv/). No API keys: the example is pure
