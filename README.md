@@ -2,38 +2,88 @@
 
 *A declaration layer over Pydantic Graph Builder.*
 
-**Let an AI coding agent build a workflow unsupervised and it produces code that works and is
-[incoherent](docs/glossary.md#coherence).** Not broken — that you would notice. Incoherent: a fan-out whose results are
-silently dropped, two wires crossed between values of the same type, a stage nobody implemented.
-It runs, it returns something of the right shape, and nothing downstream can tell.
+**You write the workflow's shape and its data contracts as data, before any step exists** — so
+you can check it and draw it before an agent writes a line, and compare two implementations of any
+stage afterwards.
 
-The second one is worth making concrete, because it is the one a type checker cannot help with.
-The example below carries `raw_name` and `clean_name` — **both `str`**. Wire the raw one into the
-step that composes the greeting and nothing complains: right type, right shape, and the
-normalization stage silently stops mattering. Declaring each value by NAME, not just by type, is
-what turns that into a finding.
+Fastest way to see whether that is worth anything to you: three pictures of the same two-step
+workflow.
 
-Graph Builder Spec is a [declaration layer](docs/glossary.md#declaration-layer) over Pydantic Graph Builder. You write the workflow's
-shape and its data contracts as **data**, before any step exists — which is what makes that class
-of defect findable:
+## See it in 20 seconds
 
-```python
-spec.coherence_check()      # 13 well-formedness rules, 8 of them with nothing implemented
-spec.diagram()              # a picture of the same declaration
-spec.render(strategy)       # refuses outright if anything blocks
+One workflow — normalize a name, then compose a greeting from it. **Three pictures of it, and
+which tool drew each one is the whole pitch.**
+
+### 1. Pydantic Graph's own drawing — `spec.upstream_diagram(trim_only)`
+
+```mermaid
+stateDiagram-v2
+  normalize: normalize
+  compose: compose
+
+  [*] --> normalize: raw_name
+  normalize --> compose: clean_name
+  compose --> [*]: greeting
 ```
 
-So the agent gets an acceptance test it cannot talk its way past, and you get a drawing of the
-design before you read a line of its code.
+**Their real output**, not a mock-up — `upstream_diagram` calls their `build_mermaid_graph` and
+returns what it gives back. All three blocks on this page are regenerated and compared byte-for-byte
+by `test_every_mermaid_block_in_the_docs_is_one_the_code_emits`, including this one, so the
+comparison below cannot quietly stop being true.
 
-**What you do:** specify the workflow and its data contracts, inspect its diagram, then have the
-agent implement the steps. Bind alternative implementations as strategies and compare them
-through simple evaluation battles.
+⚠️ **Look at the argument.** It takes `trim_only` — a strategy — because their function needs a
+**built** graph's internals, so it cannot be called until every step is implemented. The signature
+could not be written any other way. `diagram()` below takes nothing.
 
-The declaration is also the part you can hold in your head, and it stays that way: **its size is
-set by the shape of the workflow, not by the complexity of the steps.** A step body can grow to
-500 lines; `StepSpec("price", inputs=(item,), outputs=(cost,))` stays one. Across the examples in
-this repo the declaration runs 11 to 43 lines, whatever is bound into it.
+### 2. Ours, with NOTHING implemented — `spec.diagram()`
+
+```mermaid
+flowchart TD
+  START([START])
+  normalize["normalize"]
+  compose["compose"]
+  END([END])
+  START -- raw_name --> normalize
+  normalize -- clean_name --> compose
+  compose -- greeting --> END
+```
+
+Same workflow, same names, **no step bodies, no strategy, nothing an agent has written.** This is
+the picture you review *before* asking for a line of code. `coherence_check()` runs on the same
+declaration at the same moment — 13 rules, 8 of which need no implementation at all.
+
+### 3. Ours, with TWO competing strategies — `spec.diff_diagram(trim_only, normalize_spaces)`
+
+```mermaid
+flowchart TD
+  START([START])
+  normalize["normalize<br/><b>2 STRATEGIES</b><br/>trim_only → <i>trim</i><br/>normalize_spaces → <i>trim_and_collapse</i>"]:::varies
+  compose["compose<br/><i>compose_greeting</i>"]:::shared
+  END([END])
+  START -- raw_name --> normalize
+  normalize -- clean_name --> compose
+  compose -- greeting --> END
+  classDef varies fill:#fde68a,stroke:#b45309,stroke-width:3px;
+  classDef shared fill:#f1f5f9,stroke:#94a3b8;
+```
+
+**One design, two implementations of `normalize`.** The amber node is the only thing that differs
+and it names both arms; `compose` is the same function in both, so it is greyed. Nothing here is a
+second file or a second graph — a strategy is a `{node: implementation}` mapping over *this*
+declaration, which is what makes the two arms comparable by construction.
+
+### So, three things their drawing cannot do
+
+| | |
+|---|---|
+| **draw before the code exists** | #2 is produced from the declaration alone |
+| **draw two implementations at once** | #3 greys what is shared and highlights what varies |
+| **answer "what if `normalize` were written differently?"** | that is a one-line strategy, not a fork of the file |
+
+⚠️ **Theirs is not deficient — it answers a different question.** `build_mermaid_graph` draws a
+graph; #3 draws a *comparison*. One implementation per step runs perfectly well without any of
+this, and [`examples/ladder/their_hello.py`](examples/ladder/their_hello.py) keeps that version in
+the repo with none of this library in the file.
 
 Four problems, and the same declaration answers all four:
 
@@ -88,6 +138,41 @@ in the [glossary](docs/glossary.md), with where each word comes from and what it
 Built on [Pydantic Graph](https://ai.pydantic.dev/graph/) and
 [Pydantic Evals](https://ai.pydantic.dev/evals/). Independent; not affiliated with Pydantic.
 
+## Why this exists
+
+**Let an AI coding agent build a workflow unsupervised and it produces code that works and is
+[incoherent](docs/glossary.md#coherence).** Not broken — that you would notice. Incoherent: a fan-out whose results are
+silently dropped, two wires crossed between values of the same type, a stage nobody implemented.
+It runs, it returns something of the right shape, and nothing downstream can tell.
+
+The second one is worth making concrete, because it is the one a type checker cannot help with.
+The example below carries `raw_name` and `clean_name` — **both `str`**. Wire the raw one into the
+step that composes the greeting and nothing complains: right type, right shape, and the
+normalization stage silently stops mattering. Declaring each value by NAME, not just by type, is
+what turns that into a finding.
+
+Graph Builder Spec is a [declaration layer](docs/glossary.md#declaration-layer) over Pydantic Graph Builder. You write the workflow's
+shape and its data contracts as **data**, before any step exists — which is what makes that class
+of defect findable:
+
+```python
+spec.coherence_check()      # 13 well-formedness rules, 8 of them with nothing implemented
+spec.diagram()              # a picture of the same declaration
+spec.render(strategy)       # refuses outright if anything blocks
+```
+
+So the agent gets an acceptance test it cannot talk its way past, and you get a drawing of the
+design before you read a line of its code.
+
+**What you do:** specify the workflow and its data contracts, inspect its diagram, then have the
+agent implement the steps. Bind alternative implementations as strategies and compare them
+through simple evaluation battles.
+
+The declaration is also the part you can hold in your head, and it stays that way: **its size is
+set by the shape of the workflow, not by the complexity of the steps.** A step body can grow to
+500 lines; `StepSpec("price", inputs=(item,), outputs=(cost,))` stays one. Across the examples in
+this repo the declaration runs 11 to 43 lines, whatever is bound into it.
+
 ## What it looks like
 
 This is **their** example, declared our way. Pydantic Graph's smallest complete builder program
@@ -106,6 +191,22 @@ runs perfectly well like that. What it cannot do is check or draw itself before 
 written, or answer *"and what if `normalize` were written differently?"* — which is the only
 thing the rest of this page is about.
 
+
+### ⛔ PLACEHOLDER — there is no flagship example yet
+
+Stated rather than papered over, because it is the honest state and you would work it out in five
+minutes anyway. Every example in this repo teaches **one mechanism**: `greeting` is two steps that
+trim whitespace, `contestable` has the right shape and deliberately carries no score,
+`parallel` / `counter` / `subgraph` / the ladder rungs are one concept each.
+
+So the argument this page makes — *a stage worth declaring is a stage worth arguing about* — is
+currently illustrated entirely by stages not worth arguing about. **A real one comes after the
+vocabulary settles** (`GraphImplementation`, `GraphSpec.problem`, `run_count`), because a flagship
+written on top of names that are about to change gets rewritten.
+
+Tracked in [#24](https://github.com/borisdev/graph-builder-spec/issues/24), with the criteria a
+candidate has to satisfy.
+
 One workflow — normalize a name, then compose a greeting from it:
 
 | step | input | output |
@@ -116,42 +217,12 @@ One workflow — normalize a name, then compose a greeting from it:
 Desired behaviour: preserve the name's words, trim surrounding whitespace, collapse repeated
 internal whitespace, return `Hello, {name}!`.
 
-That table is the whole declaration, and it draws itself. **Nothing is implemented at this
-point** — no `normalize` body, no `compose` body, no strategy, nothing an agent has written:
+That table is the whole declaration — it is what [diagram 2](#2-ours-with-nothing-implemented--specdiagram)
+is drawn from, and `coherence_check()` reads the same thing.
 
-```mermaid
-flowchart TD
-  START([START])
-  normalize["normalize"]
-  compose["compose"]
-  END([END])
-  START -- raw_name --> normalize
-  normalize -- clean_name --> compose
-  compose -- greeting --> END
-```
-
-Bare boxes, because nothing is bound to them yet. This picture and `coherence_check()` are what
-you review *before* asking an agent for a line of code — which is the one thing a drawing taken
-from a built graph cannot do, since building it requires the code to already exist.
-
-Two strategies disagree about how much of that `normalize` does. Same graph, two implementations
-bound: `compose` is the same function in both, so the comparison greys it and highlights the one
-node that varies:
-
-```mermaid
-flowchart TD
-  START([START])
-  normalize["normalize<br/>trim_only: <i>trim</i><br/>normalize_spaces: <i>trim_and_collapse</i>"]:::varies
-  compose["compose<br/><i>compose_greeting</i>"]:::shared
-  END([END])
-  START -- raw_name --> normalize
-  normalize -- clean_name --> compose
-  compose -- greeting --> END
-  classDef varies fill:#fde68a,stroke:#b45309,stroke-width:3px;
-  classDef shared fill:#f1f5f9,stroke:#94a3b8;
-```
-
-Both satisfy the same declared types and structure, and every check passes for both. Only the
+The two strategies in [diagram 3](#3-ours-with-two-competing-strategies--specdiff_diagramtrim_only-normalize_spaces)
+disagree about how much of that `normalize` does. **Both satisfy the same declared types and
+structure, and every check passes for both** — which is the point of the pair. Only the
 evaluation separates them:
 
 | case | input | `trim_only` | `normalize_spaces` |
@@ -185,21 +256,6 @@ floor (6.0) was larger than its mean (5.0). **A delta inside the floor is not a 
 nothing yet stops you reporting one.
 
 The whole example: [`examples/greeting.py`](examples/greeting.py).
-
-### ⛔ PLACEHOLDER — there is no flagship example yet
-
-Stated rather than papered over, because it is the honest state and you would work it out in five
-minutes anyway. Every example in this repo teaches **one mechanism**: `greeting` is two steps that
-trim whitespace, `contestable` has the right shape and deliberately carries no score,
-`parallel` / `counter` / `subgraph` / the ladder rungs are one concept each.
-
-So the argument this page makes — *a stage worth declaring is a stage worth arguing about* — is
-currently illustrated entirely by stages not worth arguing about. **A real one comes after the
-vocabulary settles** (`GraphImplementation`, `GraphSpec.problem`, `run_count`), because a flagship
-written on top of names that are about to change gets rewritten.
-
-Tracked in [#24](https://github.com/borisdev/graph-builder-spec/issues/24), with the criteria a
-candidate has to satisfy.
 
 ## Quickstart
 
