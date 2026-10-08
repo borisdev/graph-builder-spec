@@ -306,6 +306,27 @@ class GraphSpec:
         return _diagram((*self.nodes, *self.joins, *self.decisions), self.edges,
                         title=self.name or type(self).__name__, strategy=strategy)
 
+    def upstream_diagram(self, strategy: StrategySpec) -> str:
+        """Pydantic Graph's OWN mermaid for this design, for honest side-by-side comparison.
+
+        ⚠️ **It takes a `strategy`, and that is the demonstration.** `build_mermaid_graph` wants a
+        BUILT graph's internals, so there is no way to call this without every step implemented —
+        the signature cannot be written any other way. `diagram()` takes nothing, which is the
+        whole difference the README's first three pictures are about.
+
+        Not a wrapper we are proud of: it reads `g.nodes` and `g.edges_by_source` off their built
+        `Graph`. Both are public attributes, and if either moves this raises instead of drawing
+        something subtly wrong — which is the behaviour we want from a comparison we publish.
+
+        ⛔ FOR A FUTURE AGENT: do not "improve" this to work without a strategy. It cannot, and a
+        version that silently drew our own picture instead would make the README's central claim
+        unfalsifiable.
+        """
+        from pydantic_graph.graph_builder import build_mermaid_graph
+
+        g = self.render(strategy)
+        return build_mermaid_graph(g.nodes, g.edges_by_source).render()
+
     def diff_diagram(self, a: StrategySpec, b: StrategySpec) -> str:
         """Mermaid showing what two strategies SHARE and where they differ.
 

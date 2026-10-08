@@ -119,6 +119,11 @@ def _drawn() -> dict[str, str]:
     """
     spec = Greeting()
     return {
+        # ⚠️ THEIRS IS IN HERE TOO, and that is the point of registering it. The README's lead
+        # section claims pydantic's own drawing needs every step implemented; the only way that
+        # claim stays honest is if the block under it is THEIR real output, regenerated from
+        # their function. Hand-pasting it would make the central comparison unfalsifiable.
+        "Greeting().upstream_diagram(trim_only)": spec.upstream_diagram(trim_only),
         "Greeting().diagram()": spec.diagram(),
         "Greeting().diff_diagram(trim_only, normalize_spaces)":
             spec.diff_diagram(trim_only, normalize_spaces),

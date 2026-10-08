@@ -167,8 +167,14 @@ def diff_diagram(nodes: tuple[NodeSpec, ...], edges: tuple[EdgeSpec, ...],
         composed = any(isinstance(st[n], SubgraphBinding)
                        for st in (a, b) if n in st.bindings)
         if n in varies:
-            label = (f"{n.name}<br/>{a.name}: <i>{impl_name(a[n])}</i>"
-                     f"<br/>{b.name}: <i>{impl_name(b[n])}</i>")
+            # 2 STRATEGIES and the arrows are the POINT, not decoration. The colour made the
+            # varying node pop and the TEXT did not -- a reader saw three lines of names with no
+            # cue that they were ALTERNATIVES rather than a list of things the node does.
+            # Boris, 2026-10-08: "The color and style of this node helps that pop out ...but the
+            # text does not!"
+            label = (f"{n.name}<br/><b>2 STRATEGIES</b>"
+                     f"<br/>{a.name} \u2192 <i>{impl_name(a[n])}</i>"
+                     f"<br/>{b.name} \u2192 <i>{impl_name(b[n])}</i>")
             out.append(f"  {_node_id(n)}{_box(label, composed=composed)}:::varies")
         else:
             shared = impl_name(a[n]) if n in a.bindings else ""
