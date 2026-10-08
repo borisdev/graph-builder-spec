@@ -233,10 +233,10 @@ def test_diagram_needs_no_implementations_and_no_engine():
 
 def test_diff_diagram_marks_only_the_varying_node():
     out = Linear().diff_diagram(arm_a, arm_b)
-    load_line = next(ln for ln in out.splitlines() if ln.strip().startswith("load["))
-    parse_line = next(ln for ln in out.splitlines() if ln.strip().startswith("parse["))
-    assert ":::varies" in load_line
-    assert ":::shared" in parse_line
+    assert 'subgraph load[' in out and "style load fill:#fde68a" in out, out
+    assert any(ln.strip().startswith("parse[") and ln.strip().endswith(":::shared")
+               for ln in out.splitlines()), out
+    assert "subgraph parse[" not in out, "the shared node must not be highlighted"
 
 
 def test_two_rendered_graphs_of_one_design_render_identically():

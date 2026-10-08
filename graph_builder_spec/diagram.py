@@ -150,6 +150,7 @@ def diff_diagram(nodes: tuple[NodeSpec, ...], edges: tuple[EdgeSpec, ...],
     varies = {n for n in nodes
               if n in a.bindings and n in b.bindings and a[n] is not b[n]}
     out = [f"%% {title or 'strategy diff'}: {a.name} vs {b.name}", "flowchart TD"]
+    arms: list[str] = []          # subgraph ids needing a `style` line; see the varies branch
     out.append("  START([START])")
     for n in nodes:
         if isinstance(n, DecisionSpec):
@@ -167,15 +168,28 @@ def diff_diagram(nodes: tuple[NodeSpec, ...], edges: tuple[EdgeSpec, ...],
         composed = any(isinstance(st[n], SubgraphBinding)
                        for st in (a, b) if n in st.bindings)
         if n in varies:
-            # 2 STRATEGIES and the arrows are the POINT, not decoration. The colour made the
-            # varying node pop and the TEXT did not -- a reader saw three lines of names with no
-            # cue that they were ALTERNATIVES rather than a list of things the node does.
-            # Boris, 2026-10-08: "The color and style of this node helps that pop out ...but the
-            # text does not!"
-            label = (f"{n.name}<br/><b>2 STRATEGIES</b>"
-                     f"<br/>{a.name} \u2192 <i>{impl_name(a[n])}</i>"
-                     f"<br/>{b.name} \u2192 <i>{impl_name(b[n])}</i>")
-            out.append(f"  {_node_id(n)}{_box(label, composed=composed)}:::varies")
+            # ⛔ A SUBGRAPH WITH ONE BOX PER ARM, not one box with four lines of text in it.
+            # Boris, 2026-10-08, looking at the rendered page: "There must be a better way to
+            # diagram that ? .....maybe more struct inside ....maybe one node with two nodes
+            # inside ?" He was right, and the reason is visible the moment you render it: the
+            # longest arm wrapped, so `normalize_spaces -> trim_and_collapse` broke across three
+            # lines with the arrow stranded on its own. Two boxes cannot wrap into each other.
+            #
+            # ⚠️ `style <id>` and NOT `:::varies`. Verified against mermaid 11.17 with
+            # mermaid-cli: `subgraph x["t"]:::cls` is a PARSE ERROR, so the class syntax every
+            # other node here uses is simply unavailable on a subgraph.
+            #
+            # ⚠️ `direction LR` inside is omitted deliberately — mermaid ignores it when the
+            # subgraph has edges crossing its boundary, which this one always does. Emitting it
+            # would be a line that reads like it does something and does not.
+            arms.append(_node_id(n))
+            out.append(f'  subgraph {_node_id(n)}["{n.name} — 2 strategies"]')
+            for st in (a, b):
+                arm_composed = isinstance(st[n], SubgraphBinding)
+                out.append(f'    {_node_id(n)}__{st.name}'
+                           f'{_box(f"{st.name}<br/><i>{impl_name(st[n])}</i>", composed=arm_composed)}'
+                           f':::arm')
+            out.append("  end")
         else:
             shared = impl_name(a[n]) if n in a.bindings else ""
             sub = f"<br/><i>{shared}</i>" if shared else ""
@@ -183,6 +197,8 @@ def diff_diagram(nodes: tuple[NodeSpec, ...], edges: tuple[EdgeSpec, ...],
     out.append("  END([END])")
     for e in edges:
         out.append(f"  {_node_id(e.source)} {_arrow(e)} {_node_id(e.target)}")
-    out.append("  classDef varies fill:#fde68a,stroke:#b45309,stroke-width:3px;")
+    out.append("  classDef arm fill:#ffffff,stroke:#b45309,stroke-width:1px;")
+    for sub_id in arms:
+        out.append(f"  style {sub_id} fill:#fde68a,stroke:#b45309,stroke-width:3px;")
     out.append("  classDef shared fill:#f1f5f9,stroke:#94a3b8;")
     return "\n".join(out)

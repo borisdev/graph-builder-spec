@@ -33,14 +33,13 @@ def test_the_diff_isolates_exactly_the_one_contested_stage() -> None:
     difference is attributable to a NAMED STAGE; this is what that means."""
     spec = Assessment()
     assert set(spec.varies(by_recency, by_agreement)) == {"weigh"}
-    # ⚠️ Asserted on each node's OWN LINE. A substring test over the whole diagram passes while
-    # the highlight sits on the wrong box — the only thing this test is for.
-    lines = {ln.strip().split("[")[0]: ln.strip()
-             for ln in spec.diff_diagram(by_recency, by_agreement).splitlines()
-             if "[" in ln and ":::" in ln}
-    assert lines["weigh"].endswith(":::varies"), lines["weigh"]
+    # ⚠️ Asserted PER NODE, not as a substring over the whole diagram — a substring test passes
+    # while the highlight sits on the wrong box, which is the only thing this test is for.
+    diff = spec.diff_diagram(by_recency, by_agreement)
+    assert varies_in(diff, "weigh"), diff
     for shared in ("gather", "screen", "compose"):
-        assert lines[shared].endswith(":::shared"), lines[shared]
+        assert shared_in(diff, shared), diff
+        assert not varies_in(diff, shared), f"{shared} is highlighted and should not be"
 
 
 def test_every_contested_stage_states_its_problem() -> None:
@@ -76,3 +75,21 @@ def test_the_stub_names_say_stub_in_the_picture() -> None:
     drawn = Assessment().diagram(by_recency)
     assert drawn.count("_stub") >= 4, "the diagram does not show these as stubs"
     assert weigh.problem, "the contested stage must carry its brief"
+
+
+# ⚠️ A varying node is now a SUBGRAPH with one box per arm, not a box with a `:::varies` class
+# on it. `subgraph x["t"]:::cls` is a parse error in mermaid 11 (verified with mermaid-cli), so
+# the class channel every other node uses is unavailable here and the highlight is a `style`
+# line. These two helpers keep the tests asserting the FACT — this node reads as varying — so
+# they survive the next rendering change without being rewritten again.
+
+def varies_in(diagram: str, node: str) -> bool:
+    """`node` is drawn as a highlighted subgraph containing its arms."""
+    return (f'subgraph {node}[' in diagram
+            and f"style {node} fill:#fde68a" in diagram)
+
+
+def shared_in(diagram: str, node: str) -> bool:
+    """`node` is drawn as one plain box."""
+    return any(ln.strip().startswith(f"{node}[") and ln.strip().endswith(":::shared")
+               for ln in diagram.splitlines())
