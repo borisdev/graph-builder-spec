@@ -61,18 +61,23 @@ declaration at the same moment — 13 rules, 8 of which need no implementation a
 ```mermaid
 flowchart TD
   START([START])
-  normalize["normalize<br/><b>2 STRATEGIES</b><br/>trim_only → <i>trim</i><br/>normalize_spaces → <i>trim_and_collapse</i>"]:::varies
+  subgraph normalize["normalize — 2 strategies"]
+    normalize__trim_only["trim_only<br/><i>trim</i>"]:::arm
+    normalize__normalize_spaces["normalize_spaces<br/><i>trim_and_collapse</i>"]:::arm
+  end
   compose["compose<br/><i>compose_greeting</i>"]:::shared
   END([END])
   START -- raw_name --> normalize
   normalize -- clean_name --> compose
   compose -- greeting --> END
-  classDef varies fill:#fde68a,stroke:#b45309,stroke-width:3px;
+  classDef arm fill:#ffffff,stroke:#b45309,stroke-width:1px;
+  style normalize fill:#fde68a,stroke:#b45309,stroke-width:3px;
   classDef shared fill:#f1f5f9,stroke:#94a3b8;
 ```
 
-**One design, two implementations of `normalize`.** The amber node is the only thing that differs
-and it names both arms; `compose` is the same function in both, so it is greyed. Nothing here is a
+**One design, two implementations of `normalize`.** The amber box is the only stage that differs,
+and the two boxes inside it are the competing arms — one each, so neither can wrap into the
+other. `compose` is the same function in both, so it is greyed and stays a single box. Nothing here is a
 second file or a second graph — a strategy is a `{node: implementation}` mapping over *this*
 declaration, which is what makes the two arms comparable by construction.
 

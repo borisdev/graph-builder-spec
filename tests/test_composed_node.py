@@ -30,7 +30,8 @@ def test_the_diff_keeps_the_shape_when_only_ONE_arm_is_composed() -> None:
     shape for exactly the comparison worth looking at — a function against a child design."""
     diff = Parent().diff_diagram(direct_strategy, subgraph_strategy)
     assert "[[" in diff, diff
-    assert ":::varies" in diff, "a function vs a subgraph must still read as varying"
+    assert "subgraph transform[" in diff and "style transform fill:#fde68a" in diff, (
+        "a function vs a subgraph must still read as varying")
 
 
 def test_the_payload_says_subgraph_explicitly_not_by_parsing_the_label() -> None:
@@ -55,4 +56,5 @@ def test_composed_and_varies_are_independent_facts() -> None:
 
     diff = Parent().diff_diagram(subgraph_strategy, arm_b)
     assert "[[" in diff, "both arms are composed; the shape must survive"
-    assert ":::varies" in diff, "different child strategies still vary"
+    assert "subgraph transform[" in diff and "style transform fill:#fde68a" in diff, (
+        "different child strategies still vary")
