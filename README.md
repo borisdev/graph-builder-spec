@@ -4,14 +4,15 @@
 
 ## What is a "declaration layer" all about?
 
-**You write the workflow's shape and its data contracts as data, before any step is
-implemented** — so you can check it and draw it first.
+**The diagram is a sanity checkpoint.**
 
-The premise: you will try several implementations of some stages, and you cannot assert which
-one is right, only measure it. So the shape has to be settled **before your Claude Code sessions
-go off the rails.**
+You write the workflow's shape and its data contracts as data, before any implementation code
+step exists — so you can check it and draw it.
 
-**The diagram is the sanity checkpoint.**
+The premise is that you will eventually run through many implementation strategies for different
+node steps that can only be tested via [battle](docs/glossary.md#battle) style evals, and
+therefore you must start with a sane generalized workflow contract (and nested contracts)
+**before your Claude Code sessions go off the rails.**
 
 ## See it in 20 seconds
 
