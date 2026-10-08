@@ -11,8 +11,8 @@ step exists — so you can check it and draw it.
 
 The premise is that you will eventually run through many implementation strategies for different
 node steps that can only be tested via [battle](docs/glossary.md#battle) style evals, and
-therefore you must start with a sane generalized workflow contract (and nested contracts)
-**before your Claude Code sessions go off the rails.**
+therefore you must start with a **sane parent workflow spec and contract before entering the
+implementation of competing strategies rabbit hole.**
 
 ## See it in 20 seconds
 
