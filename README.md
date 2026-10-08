@@ -2,12 +2,16 @@
 
 *A declaration layer over Pydantic Graph Builder.*
 
-**You write the workflow's shape and its data contracts as data, before any step exists** — so
-you can check it and draw it before an agent writes a line, and compare two implementations of any
-stage afterwards.
+## What is a "declaration layer" all about?
 
-Fastest way to see whether that is worth anything to you: three pictures of the same two-step
-workflow.
+**You write the workflow's shape and its data contracts as data, before any step is
+implemented** — so you can check it and draw it first.
+
+The premise: you will try several implementations of some stages, and you cannot assert which
+one is right, only measure it. So the shape has to be settled **before your Claude Code sessions
+go off the rails.**
+
+**The diagram is the sanity checkpoint.**
 
 ## See it in 20 seconds
 
