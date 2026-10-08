@@ -48,6 +48,35 @@ class BattleResult:
     is_replicate: bool = False
     """Both arms ran the SAME strategy object. Then every difference below is noise, and that is
     the number to hold every real comparison against."""
+    runs_a: list[Any] = field(default_factory=list)
+    runs_b: list[Any] = field(default_factory=list)
+    """EVERY run of each arm, when `run_count > 1`. `report_a` / `report_b` stay the first run,
+    so every method here works unchanged and this is purely additive.
+
+    ⛔ Deliberately raw. There is no mean, no spread and no verdict over these — Boris,
+    2026-10-07: *"JUST SIMPLY REPORT 3 runs 3 numbers .... the developer is smart enough to
+    figure out the rest."* Three identical numbers say deterministic; `0.42 0.67 0.51` says what
+    to do next. Neither needs this layer to editorialise, and showing the runs is strictly more
+    information than a floor-vs-delta verdict computed from them.
+    """
+
+    def run_scores(self) -> dict[str, dict[str, list[float]]]:
+        """Per arm, per metric, one number per run — in run order."""
+        def collect(reports: list[Any]) -> dict[str, list[float]]:
+            out: dict[str, list[float]] = {}
+            for r in reports:
+                for k, v in _avg_scores(r).items():
+                    out.setdefault(k, []).append(v)
+            return out
+
+        return {self.label_a: collect(self.runs_a or [self.report_a]),
+                self.label_b: collect(self.runs_b or [self.report_b])}
+
+    def print_runs(self) -> None:
+        """The three-numbers-per-arm table, and nothing else."""
+        for label, metrics in self.run_scores().items():
+            for metric, values in sorted(metrics.items()):
+                print(f"   {label:<24} {metric:<18} " + "  ".join(f"{v:.2f}" for v in values))
 
     def print(self, **kw: Any) -> None:
         """pydantic-evals' own diff — `report_b` against `report_a` as baseline. Not ours."""
@@ -93,8 +122,17 @@ def _per_case_scores(report: Any) -> dict[str, dict[str, float]]:
 
 
 def eval_battle(spec: GraphSpec, strategy_a: StrategySpec, strategy_b: StrategySpec,
-                dataset: Any, *, run: Callable[[Any, Any], Any] | None = None) -> BattleResult:
+                dataset: Any, *, run: Callable[[Any, Any], Any] | None = None,
+                run_count: int = 1) -> BattleResult:
     """Two strategies, one design, the same cases. Independent-scoring mode.
+
+    `run_count` runs EACH arm that many times and keeps every run's number in `runs_a` /
+    `runs_b`. `run_count=1` is exactly the previous behaviour, so this is additive.
+
+    ⛔ No noise floor, no automatic A/A arm, no refusal to name a winner. That design was
+    specified and dropped — #11. It made a judgement on the caller's behalf, cost 50% more
+    compute on every battle, and is a fine-tune feature for a library nobody is using yet. Three
+    numbers are more information than a verdict derived from them.
 
     ⚠️ Fairness is structural, not remembered: there is exactly ONE `spec` parameter, so both arms
     render against the same nodes, edges and types by construction. A caller cannot accidentally
@@ -114,12 +152,20 @@ def eval_battle(spec: GraphSpec, strategy_a: StrategySpec, strategy_b: StrategyS
             raise SpecError(f"strategy {s.name!r} does not satisfy "
                             f"{spec.name or type(spec).__name__}:\n  " + "\n  ".join(findings))
 
+    if run_count < 1:
+        raise SpecError(f"run_count={run_count} runs nothing. It is a count of runs per arm.")
+
     graph_a = spec.render(strategy_a)
     graph_b = spec.render(strategy_b)
-    return compare_graphs(graph_a, graph_b, dataset,
-                          labels=(strategy_a.name, strategy_b.name),
-                          spec_name=spec.name or type(spec).__name__,
-                          is_replicate=strategy_a is strategy_b, run=run)
+    results = [compare_graphs(graph_a, graph_b, dataset,
+                              labels=(strategy_a.name, strategy_b.name),
+                              spec_name=spec.name or type(spec).__name__,
+                              is_replicate=strategy_a is strategy_b, run=run)
+               for _ in range(run_count)]
+    first = results[0]
+    first.runs_a = [r.report_a for r in results]
+    first.runs_b = [r.report_b for r in results]
+    return first
 
 
 def _named(fn: Any, name: str) -> Any:

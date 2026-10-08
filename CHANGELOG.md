@@ -5,6 +5,71 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### ⛔ Breaking — `check` is replaced by `potential_incoherence`, and is now DERIVED
+
+```python
+CoherenceFinding(msg, check="check_reachable", about="orphan")                    # before
+CoherenceFinding(msg, potential_incoherence=P.UNREACHABLE_FROM_START, about="x")  # after
+
+finding.potential_incoherence   # PotentialIncoherence.UNREACHABLE_FROM_START
+finding.check                   # "check_reachable"  — DERIVED, still works, never stored
+```
+
+**Reading `f.check` is unchanged.** It is a read-only property over one table, so the ~30
+assertions here and in both downstream repos need no edit. Only *constructing* a finding changed.
+
+### ⛔ 33 members, not 13, and that is the whole point
+
+There are 13 check functions. Naming the field after the checker would have been a third of the
+information — `check_reachable` alone reports **five** different things to fix:
+
+```
+nothing_leaves_start · nothing_reaches_end · unreachable_from_start
+no_path_to_end · edge_references_undeclared_node
+```
+
+`potential_incoherence="check_reachable"` names a *function*, not an incoherence — a field
+promising more precision than its value delivers, which is the failure this package exists to
+catch. So the members name the defect.
+
+A `StrEnum`, so `f.potential_incoherence == "unreachable_from_start"` is `True`, it serialises
+into the payload with no encoder, and existing string comparisons keep working. Same reasoning as
+`CoherenceFinding` being a `str` subclass.
+
+⚠️ **`check` is derived rather than stored, and that is not tidiness.** Storing both is how one
+concept gets two names and nothing stops them disagreeing — the exact argument `blocking` already
+rests on. `_OWNER` is the single table, and `test_every_member_has_an_owner_and_every_owner_entry_is_a_member`
+asserts it total in **both** directions.
+
+⚠️ `test_every_check_function_owns_at_least_one_incoherence` is the one that catches a *new*
+check: adding `check_foo` without naming what it can find leaves it unable to construct a finding
+at all, and nothing else would say so until someone hit the path.
+
+⚠️ Three members end `_not_checked`. A stated gap is **not** a defect — it is the absence of a
+verdict — so the enum deliberately mixes two kinds of thing, and `blocking` is what tells them
+apart. `potential_incoherence=None` for a gap was considered and rejected: more honest, but it
+makes every consumer handle `None` for a distinction they already have.
+
+### Added — `eval_battle(run_count=N)`
+
+```python
+eval_battle(spec, arm_a, arm_b, dataset, run_count=3)
+#   trim_only          ExactMatch   0.50  0.50  0.50
+#   normalize_spaces   ExactMatch   1.00  1.00  1.00
+```
+
+Runs **each arm** N times and keeps every run in `runs_a` / `runs_b`, readable via `run_scores()`
+or `print_runs()`. `run_count=1` is the default and is exactly the previous behaviour.
+
+⛔ **No mean, no spread, no winner, no refusal.** #11 originally specified a default A/A arm that
+declined to name a winner inside the noise floor; that is dropped. It made a judgement on the
+caller's behalf and cost 50% more compute on every battle. Three identical numbers say
+deterministic; `0.42 0.67 0.51` says what to do next — neither needs this layer to editorialise.
+`run_count=0` raises rather than returning a battle that measured nothing.
+
+`per_case_spread()` stays. It is correct, costs nothing, and is simply no longer mandatory.
+
+
 ### ⛔ Breaking — `object` is no longer a declarable type
 
 ```python
