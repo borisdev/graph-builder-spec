@@ -2,6 +2,12 @@
 
 *A declaration layer over Pydantic Graph Builder.*
 
+**For AI reasoning workflows** — where the output is subjective, there is no right answer to diff
+against, and you will write the same step three different ways before you know which is better.
+
+Pydantic Graph is a general graph and state machine library. This is the opinionated layer on
+top, for that one case.
+
 ## What is a "declaration layer" all about?
 
 You declare the workflow's steps, connections and data contracts **separately from their
