@@ -4,60 +4,22 @@
 
 ## What is a "declaration layer" all about?
 
-**The diagram is a sanity checkpoint.**
+You declare the workflow's steps, connections and data contracts **separately from their
+implementations**. So you can check the structure and draw it before any step body exists.
 
-You write the workflow's shape and its data contracts as data, before any implementation code
-step exists — so you can check it and draw it.
+You will try competing algorithms, prompts and reasoning strategies inside those steps. Ordinary
+tests catch defects; a [battle](docs/glossary.md#battle) compares two strategies that are both
+correct. The declaration is what makes them comparable at all — so start with a sane parent spec
+and contract before you enter that rabbit hole.
 
-The premise is that you will eventually run through many implementation strategies for different
-node steps that can only be tested via [battle](docs/glossary.md#battle) style evals, and
-therefore you must start with a sane generalized workflow contract (and nested contracts)
-**before your Claude Code sessions go off the rails.**
+A step can hold a nested workflow: its own declaration, the same external contract.
 
-## See it in 20 seconds
+## The diagram is a sanity checkpoint
 
-One workflow — normalize a name, then compose a greeting from it. **Three pictures of it, and
-which tool drew each one is the whole pitch.**
+**Does this workflow make sense before a coding agent starts implementing it?**
 
-### 1. Pydantic Graph's own drawing — `spec.upstream_diagram(trim_only)`
-
-```mermaid
-stateDiagram-v2
-  normalize: normalize
-  compose: compose
-
-  [*] --> normalize: raw_name
-  normalize --> compose: clean_name
-  compose --> [*]: greeting
-```
-
-**Their real output**, not a mock-up — `upstream_diagram` calls their `build_mermaid_graph` and
-returns what it gives back. All three blocks on this page are regenerated and compared byte-for-byte
-by `test_every_mermaid_block_in_the_docs_is_one_the_code_emits`, including this one, so the
-comparison below cannot quietly stop being true.
-
-⚠️ **Look at the argument.** It takes `trim_only` — a strategy — because their function needs a
-**built** graph's internals, so it cannot be called until every step is implemented. The signature
-could not be written any other way. `diagram()` below takes nothing.
-
-### 2. Ours, with NOTHING implemented — `spec.diagram()`
-
-```mermaid
-flowchart TD
-  START([START])
-  normalize["normalize"]
-  compose["compose"]
-  END([END])
-  START -- raw_name --> normalize
-  normalize -- clean_name --> compose
-  compose -- greeting --> END
-```
-
-Same workflow, same names, **no step bodies, no strategy, nothing an agent has written.** This is
-the picture you review *before* asking for a line of code. `coherence_check()` runs on the same
-declaration at the same moment — 13 rules, 8 of which need no implementation at all.
-
-### 3. Ours, with TWO competing strategies — `spec.diff_diagram(trim_only, normalize_spaces)`
+One workflow — normalize a name, then compose a greeting from it — with two competing
+implementations of `normalize`. Drawn by `spec.diff_diagram(trim_only, normalize_spaces)`:
 
 ```mermaid
 flowchart TD
@@ -76,24 +38,86 @@ flowchart TD
   classDef shared fill:#f1f5f9,stroke:#94a3b8;
 ```
 
-**One design, two implementations of `normalize`.** The amber box is the only stage that differs,
-and the two boxes inside it are the competing arms — one each, so neither can wrap into the
-other. `compose` is the same function in both, so it is greyed and stays a single box. Nothing here is a
-second file or a second graph — a strategy is a `{node: implementation}` mapping over *this*
-declaration, which is what makes the two arms comparable by construction.
+### How is this different from a Pydantic Graph Builder diagram?
 
-### So, three things their drawing cannot do
+- **It exists before the code does.** Theirs is drawn from a *built* graph, so every step must
+  already be implemented. This one is drawn from the declaration.
+- **It shows two implementations of one step at once.** Theirs draws one graph — and two arms of
+  one design render **byte-identical**, because a built graph does not retain which strategy
+  produced it.
+- **It says which stage is contested.** The amber box is the only thing that differs, and it
+  holds one box per arm; the grey ones are the same function in both.
+- **The same declaration is what `coherence_check()` reads** — 13 rules, 8 of them needing
+  nothing implemented. The picture and the lint cannot disagree.
 
-| | |
-|---|---|
-| **draw before the code exists** | #2 is produced from the declaration alone |
-| **draw two implementations at once** | #3 greys what is shared and highlights what varies |
-| **answer "what if `normalize` were written differently?"** | that is a one-line strategy, not a fork of the file |
+<details>
+<summary><strong>Their drawing of the same workflow</strong> — real output, not a mock-up</summary>
 
-⚠️ **Theirs is not deficient — it answers a different question.** `build_mermaid_graph` draws a
-graph; #3 draws a *comparison*. One implementation per step runs perfectly well without any of
-this, and [`examples/ladder/their_hello.py`](examples/ladder/their_hello.py) keeps that version in
-the repo with none of this library in the file.
+```mermaid
+stateDiagram-v2
+  normalize: normalize
+  compose: compose
+
+  [*] --> normalize: raw_name
+  normalize --> compose: clean_name
+  compose --> [*]: greeting
+```
+
+From `spec.upstream_diagram(trim_only)`, which calls their `build_mermaid_graph` and returns what
+it gives back. **Look at the argument:** it takes a strategy, because their function needs a
+*built* graph's internals and cannot be called until every step is implemented. The signature
+could not be written any other way — `diagram()` takes nothing.
+
+This is **their** example, declared our way. Pydantic Graph's smallest complete builder program
+is two steps where the second formats the first's output
+([`visualize_graph.py`](https://pydantic.dev/docs/ai/graph/builder/)); the same shape runs here,
+so the difference you are looking at is the declaration layer and nothing else:
+
+| | step 1 | step 2 |
+|---|---|---|
+| **upstream**, unchanged — their [`visualize_graph.py`](https://pydantic.dev/docs/ai/graph/builder/) | `step_a` → `10` | `step_b` → `f'Result: {ctx.inputs}'` |
+| **the control** — [`their_hello.py`](examples/ladder/their_hello.py): upstream's shape, a greeting instead of a number, and none of this library in the file | `pick` → `"Hello"` | `compose` → `f"{ctx.inputs}, {ctx.state.name}!"` |
+| **ours** — [`greeting.py`](examples/greeting.py), the same workflow declared | `normalize` → a clean name | `compose` → `f"Hello, {name}!"` |
+
+Every mermaid block on this page, including this one, is regenerated and compared byte-for-byte
+by `test_every_mermaid_block_in_the_docs_is_one_the_code_emits`. The comparison above cannot
+quietly stop being true.
+</details>
+
+## Why this exists
+
+**Let an AI coding agent build a workflow unsupervised and it produces code that works and is
+[incoherent](docs/glossary.md#coherence).** Not broken — that you would notice. Incoherent: a fan-out whose results are
+silently dropped, two wires crossed between values of the same type, a stage nobody implemented.
+It runs, it returns something of the right shape, and nothing downstream can tell.
+
+The second one is worth making concrete, because it is the one a type checker cannot help with.
+The example below carries `raw_name` and `clean_name` — **both `str`**. Wire the raw one into the
+step that composes the greeting and nothing complains: right type, right shape, and the
+normalization stage silently stops mattering. Declaring each value by NAME, not just by type, is
+what turns that into a finding.
+
+Graph Builder Spec is a [declaration layer](docs/glossary.md#declaration-layer) over Pydantic Graph Builder. You write the workflow's
+shape and its data contracts as **data**, before any step exists — which is what makes that class
+of defect findable:
+
+```python
+spec.coherence_check()      # 13 well-formedness rules, 8 of them with nothing implemented
+spec.diagram()              # a picture of the same declaration
+spec.render(strategy)       # refuses outright if anything blocks
+```
+
+So the agent gets an acceptance test it cannot talk its way past, and you get a drawing of the
+design before you read a line of its code.
+
+**What you do:** specify the workflow and its data contracts, inspect its diagram, then have the
+agent implement the steps. Bind alternative implementations as strategies and compare them
+through simple evaluation battles.
+
+The declaration is also the part you can hold in your head, and it stays that way: **its size is
+set by the shape of the workflow, not by the complexity of the steps.** A step body can grow to
+500 lines; `StepSpec("price", inputs=(item,), outputs=(cost,))` stays one. Across the examples in
+this repo the declaration runs 11 to 43 lines, whatever is bound into it.
 
 Four problems, and the same declaration answers all four:
 
@@ -148,61 +172,7 @@ in the [glossary](docs/glossary.md), with where each word comes from and what it
 Built on [Pydantic Graph](https://ai.pydantic.dev/graph/) and
 [Pydantic Evals](https://ai.pydantic.dev/evals/). Independent; not affiliated with Pydantic.
 
-## Why this exists
-
-**Let an AI coding agent build a workflow unsupervised and it produces code that works and is
-[incoherent](docs/glossary.md#coherence).** Not broken — that you would notice. Incoherent: a fan-out whose results are
-silently dropped, two wires crossed between values of the same type, a stage nobody implemented.
-It runs, it returns something of the right shape, and nothing downstream can tell.
-
-The second one is worth making concrete, because it is the one a type checker cannot help with.
-The example below carries `raw_name` and `clean_name` — **both `str`**. Wire the raw one into the
-step that composes the greeting and nothing complains: right type, right shape, and the
-normalization stage silently stops mattering. Declaring each value by NAME, not just by type, is
-what turns that into a finding.
-
-Graph Builder Spec is a [declaration layer](docs/glossary.md#declaration-layer) over Pydantic Graph Builder. You write the workflow's
-shape and its data contracts as **data**, before any step exists — which is what makes that class
-of defect findable:
-
-```python
-spec.coherence_check()      # 13 well-formedness rules, 8 of them with nothing implemented
-spec.diagram()              # a picture of the same declaration
-spec.render(strategy)       # refuses outright if anything blocks
-```
-
-So the agent gets an acceptance test it cannot talk its way past, and you get a drawing of the
-design before you read a line of its code.
-
-**What you do:** specify the workflow and its data contracts, inspect its diagram, then have the
-agent implement the steps. Bind alternative implementations as strategies and compare them
-through simple evaluation battles.
-
-The declaration is also the part you can hold in your head, and it stays that way: **its size is
-set by the shape of the workflow, not by the complexity of the steps.** A step body can grow to
-500 lines; `StepSpec("price", inputs=(item,), outputs=(cost,))` stays one. Across the examples in
-this repo the declaration runs 11 to 43 lines, whatever is bound into it.
-
-## What it looks like
-
-This is **their** example, declared our way. Pydantic Graph's smallest complete builder program
-is two steps where the second formats the first's output
-([`visualize_graph.py`](https://pydantic.dev/docs/ai/graph/builder/)); the same shape runs here,
-so the difference you are looking at is the declaration layer and nothing else:
-
-| | step 1 | step 2 |
-|---|---|---|
-| **upstream**, unchanged — their [`visualize_graph.py`](https://pydantic.dev/docs/ai/graph/builder/) | `step_a` → `10` | `step_b` → `f'Result: {ctx.inputs}'` |
-| **the control** — [`their_hello.py`](examples/ladder/their_hello.py): upstream's shape, a greeting instead of a number, and none of this library in the file | `pick` → `"Hello"` | `compose` → `f"{ctx.inputs}, {ctx.state.name}!"` |
-| **ours** — [`greeting.py`](examples/greeting.py), the same workflow declared | `normalize` → a clean name | `compose` → `f"Hello, {name}!"` |
-
-Theirs is fine, and that is the point of keeping it: one graph with one implementation per step
-runs perfectly well like that. What it cannot do is check or draw itself before the steps are
-written, or answer *"and what if `normalize` were written differently?"* — which is the only
-thing the rest of this page is about.
-
-
-### ⛔ PLACEHOLDER — there is no flagship example yet
+## ⛔ PLACEHOLDER — there is no flagship example yet
 
 Stated rather than papered over, because it is the honest state and you would work it out in five
 minutes anyway. Every example in this repo teaches **one mechanism**: `greeting` is two steps that

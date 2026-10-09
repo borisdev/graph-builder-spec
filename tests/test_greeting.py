@@ -124,7 +124,12 @@ def _drawn() -> dict[str, str]:
         # claim stays honest is if the block under it is THEIR real output, regenerated from
         # their function. Hand-pasting it would make the central comparison unfalsifiable.
         "Greeting().upstream_diagram(trim_only)": spec.upstream_diagram(trim_only),
-        "Greeting().diagram()": spec.diagram(),
+        # ⚠️ `diagram()` is NOT here, and that is deliberate rather than an oversight. The README
+        # dropped the nothing-implemented picture because you cannot photograph an absence — it
+        # looked pixel-for-pixel like any other diagram, and its whole claim lived in the
+        # sentence above it. The claim is now a bullet; the drawing is gone. `diagram()` itself
+        # is still covered by test_the_specification_checks_clean_with_nothing_implemented and
+        # by every ladder rung.
         "Greeting().diff_diagram(trim_only, normalize_spaces)":
             spec.diff_diagram(trim_only, normalize_spaces),
     }
