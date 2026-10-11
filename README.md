@@ -611,11 +611,16 @@ specification guarantees; behaviour is what the battle is for.
 
 Row by row, with their code beside ours: [`docs/parity.md`](docs/parity.md).
 
-## An example teaches the mechanism. A pattern has been battled.
+## An example teaches the mechanism. A "pattern" would have to be battled.
 
-The ambition is that reusable designs accumulate — the library supplies the grammar, you grow the
-vocabulary. The hazard is that "pattern" becomes whatever somebody wrote six paragraphs about, so
-the bar here is checkable rather than literary. A **pattern** is a reusable design that:
+⛔ **A pattern CATALOGUE was proposed and dropped** (#13, closed not-planned). Boris, 2026-10-09:
+*"Patterns is implicit in pydantic graph builder nodes and are shared by more than one graph."* A
+reusable node or nested graph bound into more than one design already IS the mechanism — a
+catalogue would have been a second name for something that exists.
+
+The BAR below is kept, because it is the useful half: it says what would have to be true before
+calling any example reusable, and it is checkable rather than literary. A **pattern** is a
+reusable design that:
 
 1. is importable by name — a graph plus its strategy, not a script that runs top to bottom;
 2. ships a `Dataset` and at least two strategies, so `eval_battle` runs on it;
@@ -662,17 +667,33 @@ native Pydantic Graph, not a proposal to change it.
 ## Where this is going
 
 Stated because the gap between what is built and what is intended should be readable, not
-inferred. Tracked as issues, not promised here.
+inferred. **Every row is a GitHub issue** — this table goes stale, the issues do not.
 
 | | |
 |---|---|
-| **a flagship example that earns the library** | one graph IR in, competing reports out — four stages that are each a judgement call, two strategies differing in one. `contestable.py` is a placeholder for this shape with the nouns marked as stand-ins. |
-| **`eval_battle` takes its own noise floor** | so a delta inside the floor cannot be reported as a result |
-| **a problem brief on `GraphSpec`, not only on `StepSpec`** | a reusable design has its own problem, separate from the role it happens to fill |
-| **the nested-graph rename** | see the naming note above |
+| [#24](../../issues/24) **a flagship example that earns the library** | every current example teaches one mechanism, so the argument *"a stage worth declaring is a stage worth arguing about"* is illustrated entirely by stages not worth arguing about. The leading candidate is a workflow that finds incoherence in OTHER workflows, with `coherence_check()` as the deterministic oracle and defects injected into known-good designs. |
+| [#32](../../issues/32) **one vocabulary break at 0.4.0** | `SubgraphBinding` → `GraphImplementation`, `about` → `subject` + `subject_kind` with `::` paths, and `diff_diagram(a, b)` → `diagram(a, b)`. Three agreed renames, landing together because both downstream repos track `main` and each break reaches them on their next sync. |
+| [#10](../../issues/10) **a problem brief on `GraphSpec`, not only on `StepSpec`** | a reusable design has its own problem, separate from the role it fills. Today a parent role demanding *"claims WITH a supporting quotation"* can be filled by a child graph that does not do quotations, and every check passes — types cannot carry that requirement. |
+| [#33](../../issues/33) **CI** | there is none. Every "340 passed" in this repo is one person's local run. |
+| [#1](../../issues/1) [#2](../../issues/2) [#12](../../issues/12) [#15](../../issues/15) | the remaining smaller ones |
+
+⛔ **Dropped on purpose, so they are not re-proposed:** a pattern catalogue (#13), the NobsMed
+graph-IR flagship (#17), and an automatic noise-floor arm that refuses to name a winner — #11
+shipped as `eval_battle(run_count=N)` instead, which reports every run and editorialises about
+none of them.
 
 Not planned: a rubric field on a node, an advisory severity, or a node subtype for model-backed
 stages. Each was asked for and each is answered above by a boundary instead of a field.
+
+### For the next session
+
+Two docs carry reasoning that would otherwise have to be rebuilt from scratch:
+
+- [`docs/open-questions.md`](docs/open-questions.md) — three runnable probes and their real
+  output, for the questions that needed *showing* rather than explaining.
+- [`docs/naming-potential-incoherence.md`](docs/naming-potential-incoherence.md) — the
+  `potential_incoherence` enumeration and the `subject` proposal, with the measurement showing
+  node names and strategy names are indistinguishable by inspection.
 
 ## Licence
 
