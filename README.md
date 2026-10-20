@@ -8,6 +8,49 @@ against, and you will write the same step three different ways before you know w
 Pydantic Graph is a general graph and state machine library. This is the opinionated layer on
 top, for that one case.
 
+## The loop this is built for
+
+```
+ontology  →  composition  →  reality test  →  repeat
+```
+
+```
+what it is      ontology authoring for composable workflows
+what it is for  eval strategy battles — by construction, or refused
+```
+
+The loop and the feature list are the same thing seen twice:
+
+| loop term | what you get | the call |
+|---|---|---|
+| **ontology** — name the values, their states, and the transforms over them | a vocabulary small enough to hold in one sitting, and a picture of the design before any step body exists | `diagram()` |
+| **composition** — assemble steps and nested workflows out of that vocabulary and nothing else | an incoherent composition is refused rather than corrected, so an agent composes and cannot invent | `coherence_check()`, `render()` |
+| **reality test** — two implementations of one design, over the same cases | a comparison that is apples-to-apples **by construction**: `eval_battle` takes exactly one `spec`, so there is nowhere to put a second design | `eval_battle()`, `diff_diagram()` |
+| **repeat** — round *n+1* comparable to round *n* | ⛔ **not closed yet.** Within one battle, `run_count` gives replicates and a labelled A/A arm. Across battles nothing records the conditions a result was produced under — `deps` reach a run through a caller-supplied `run` closure the library never sees, so two arms can differ in their model and the library cannot know. | — |
+
+That last row is the honest state, and it is the next thing to build: a recorded
+`(spec hash, strategy, deps, dataset, code revision)` per result, and a refusal when two results
+differ in anything but the strategy. **Until it exists the claim is "comparable designs, recorded
+conditions" — not "comparable results."** A library whose pitch is honest comparison does not get
+to round that up.
+
+<details>
+<summary>Why a loop, and not a pattern catalogue</summary>
+
+Christopher Alexander's pattern language is the same first two moves — a closed vocabulary where
+each pattern declares which larger ones it completes and which smaller ones complete it. Applied by
+people who had not internalised the generative process it became a catalogue to shop from;
+Alexander spent his later career saying so, and told the software world as much at OOPSLA in 1996,
+after it took the vocabulary and left the test behind. Patterns were meant to be judged by whether
+the result was better for the people in the building, and software patterns had no such judgement
+available.
+
+So: abstraction and composition with **no reality test** calcify into a catalogue. The third term is
+what makes the first two keep paying — which is why `eval_battle` is in the library rather than in a
+wiki.
+
+</details>
+
 ## What is a "declaration layer" all about?
 
 You declare the workflow's steps, connections and data contracts **separately from their
